@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SYNAPSE | Login</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: Arial, sans-serif;
+            min-height: 100vh;
+            background: #f4f5f7;
+            color: #222;
+        }
+
+        header {
+            width: 100%;
+            background: #d62828;
+            color: white;
+            text-align: center;
+            padding: 18px 12px;
+        }
+
+        header h1 { font-size: 2rem; letter-spacing: 4px; }
+
+        main {
+            min-height: calc(100vh - 76px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 24px;
+        }
+
+        .login-card {
+            width: 100%;
+            max-width: 390px;
+            background: white;
+            padding: 32px;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.09);
+        }
+
+        .login-card h2 { text-align: center; margin-bottom: 8px; font-size: 1.5rem; }
+        .subtitle { text-align: center; color: #666; margin-bottom: 26px; font-size: 0.92rem; }
+        .form-group { margin-bottom: 18px; }
+
+        label {
+            display: block;
+            margin-bottom: 7px;
+            font-weight: 600;
+            font-size: 0.92rem;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 1rem;
+            outline: none;
+        }
+
+        input:focus {
+            border-color: #d62828;
+            box-shadow: 0 0 0 3px rgba(214, 40, 40, 0.12);
+        }
+
+        .login-button {
+            width: 100%;
+            padding: 12px;
+            margin-top: 4px;
+            border: none;
+            border-radius: 6px;
+            background: #d62828;
+            color: white;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .login-button:hover { background: #b71f1f; }
+        .login-button:disabled { opacity: 0.65; cursor: wait; }
+
+        .links {
+            margin-top: 22px;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            font-size: 0.92rem;
+        }
+
+        .links a { color: #b71f1f; text-decoration: none; }
+        .links a:hover { text-decoration: underline; }
+
+        #message {
+            margin-top: 16px;
+            text-align: center;
+            font-size: 0.92rem;
+            line-height: 1.4;
+        }
+
+        #message.error { color: #b71f1f; }
+        #message.success { color: #18733b; }
+
+        @media (max-width: 480px) {
+            .login-card { padding: 25px 20px; }
+            header h1 { font-size: 1.7rem; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>SYNAPSE</h1>
+    </header>
+
+    <main>
+        <section class="login-card">
+            <h2>Synapse</h2>
+            <p class="subtitle">Log in to your shared workspace</p>
+
+            <form id="login-form">
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" name="username"
+                           placeholder="Enter your username"
+                           autocomplete="username" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password"
+                           placeholder="Enter your password"
+                           autocomplete="current-password" required>
+                </div>
+
+                <button class="login-button" id="login-button" type="submit">Login</button>
+                <p id="message" role="status" aria-live="polite"></p>
+            </form>
+
+            <nav class="links" aria-label="Other account options">
+                <a href="admin-login.html">Login as Admin</a>
+                <a href="register.html">New User? Register here</a>
+            </nav>
+        </section>
+    </main>
+
+    <script>
+        const form = document.getElementById("login-form");
+        const message = document.getElementById("message");
+        const loginButton = document.getElementById("login-button");
+
+        form.addEventListener("submit", async (event) => {
+            event.preventDefault();
+
+            message.textContent = "";
+            message.className = "";
+            loginButton.disabled = true;
+            loginButton.textContent = "Logging in...";
+
+            const username = document.getElementById("username").value.trim();
+            const password = document.getElementById("password").value;
+
+            try {
+                // Change this URL if your FastAPI backend uses a different host or port.
+                const response = await fetch("http://127.0.0.1:8000/login", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({ username, password })
+                });
+
+                const data = await response.json().catch(() => ({}));
+
+                if (!response.ok) {
+                    message.textContent = data.detail || "Login failed. Check your credentials.";
+                    message.className = "error";
+                    return;
+                }
+
+                message.textContent = data.message || "Login successful!";
+                message.className = "success";
+
+                // Later, redirect to your workspace after the backend establishes
+                // a secure session or returns an authentication token.
+                // window.location.href = "workspace.html";
+            } catch (error) {
+                message.textContent =
+                    "Cannot connect to the Synapse server. Check that the backend is running.";
+                message.className = "error";
+            } finally {
+                loginButton.disabled = false;
+                loginButton.textContent = "Login";
+            }
+        });
+    </script>
+</body>
+</html>

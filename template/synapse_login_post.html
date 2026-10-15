@@ -1,200 +1,260 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SYNAPSE | Login</title>
+
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
+        * { box-sizing: border-box; }
 
         body {
+            margin: 0;
             font-family: Arial, sans-serif;
-            min-height: 100vh;
             background: #f4f5f7;
             color: #222;
         }
 
         header {
-            width: 100%;
             background: #d62828;
             color: white;
             text-align: center;
-            padding: 18px 12px;
+            padding: 18px;
         }
 
-        header h1 { font-size: 2rem; letter-spacing: 4px; }
+        header h1 {
+            margin: 0;
+            letter-spacing: 4px;
+        }
 
         main {
-            min-height: calc(100vh - 76px);
+            min-height: 85vh;
             display: flex;
             justify-content: center;
             align-items: center;
-            padding: 24px;
+            padding: 20px;
         }
 
-        .login-card {
+        .card {
             width: 100%;
-            max-width: 390px;
+            max-width: 400px;
             background: white;
-            padding: 32px;
+            padding: 30px;
             border-radius: 12px;
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.09);
+            box-shadow: 0 8px 24px #00000017;
         }
 
-        .login-card h2 { text-align: center; margin-bottom: 8px; font-size: 1.5rem; }
-        .subtitle { text-align: center; color: #666; margin-bottom: 26px; font-size: 0.92rem; }
-        .form-group { margin-bottom: 18px; }
+        h2 { text-align: center; }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 25px;
+        }
 
         label {
             display: block;
             margin-bottom: 7px;
-            font-weight: 600;
-            font-size: 0.92rem;
+            font-weight: bold;
         }
+
+        .group { margin-bottom: 17px; }
 
         input {
             width: 100%;
             padding: 12px;
             border: 1px solid #ccc;
             border-radius: 6px;
-            font-size: 1rem;
-            outline: none;
+            font-size: 16px;
         }
 
-        input:focus {
-            border-color: #d62828;
-            box-shadow: 0 0 0 3px rgba(214, 40, 40, 0.12);
-        }
-
-        .login-button {
+        .primary {
             width: 100%;
             padding: 12px;
-            margin-top: 4px;
             border: none;
             border-radius: 6px;
             background: #d62828;
             color: white;
-            font-size: 1rem;
-            font-weight: 700;
+            font-size: 16px;
+            font-weight: bold;
             cursor: pointer;
         }
 
-        .login-button:hover { background: #b71f1f; }
-        .login-button:disabled { opacity: 0.65; cursor: wait; }
-
-        .links {
-            margin-top: 22px;
-            text-align: center;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            font-size: 0.92rem;
+        .primary:disabled {
+            opacity: 0.6;
+            cursor: wait;
         }
-
-        .links a { color: #b71f1f; text-decoration: none; }
-        .links a:hover { text-decoration: underline; }
 
         #message {
             margin-top: 16px;
             text-align: center;
-            font-size: 0.92rem;
-            line-height: 1.4;
+            line-height: 1.5;
         }
 
-        #message.error { color: #b71f1f; }
-        #message.success { color: #18733b; }
-
-        @media (max-width: 480px) {
-            .login-card { padding: 25px 20px; }
-            header h1 { font-size: 1.7rem; }
-        }
+        .error { color: #b71f1f; }
+        .success { color: #18733b; }
+        .hidden { display: none; }
     </style>
 </head>
+
 <body>
-    <header>
-        <h1>SYNAPSE</h1>
-    </header>
+<header>
+    <h1>SYNAPSE</h1>
+</header>
 
-    <main>
-        <section class="login-card">
-            <h2>Synapse</h2>
-            <p class="subtitle">Log in to your shared workspace</p>
+<main>
+    <section class="card">
+        <h2>Welcome Back</h2>
+        <p class="subtitle">Log in to your shared workspace</p>
 
-            <form id="login-form">
-                <div class="form-group">
-                    <label for="username">Username</label>
-                    <input type="text" id="username" name="username"
-                           placeholder="Enter your username"
-                           autocomplete="username" required>
+        <form id="login-form">
+            <div class="group">
+                <label for="email">Registered Email</label>
+                <input
+                    id="email"
+                    type="email"
+                    autocomplete="username"
+                    placeholder="you@example.com"
+                    required
+                >
+            </div>
+
+            <div class="group">
+                <label for="password">Password</label>
+                <input
+                    id="password"
+                    type="password"
+                    autocomplete="current-password"
+                    required
+                >
+            </div>
+
+            <button class="primary" id="send-button" type="submit">
+                Verify Credentials & Send OTP
+            </button>
+
+            <div id="otp-section" class="hidden">
+                <div class="group" style="margin-top: 20px;">
+                    <label for="otp">Enter 6-digit OTP</label>
+                    <input
+                        id="otp"
+                        type="text"
+                        inputmode="numeric"
+                        autocomplete="one-time-code"
+                        pattern="[0-9]{6}"
+                        maxlength="6"
+                        placeholder="Enter OTP from email"
+                        required
+                    >
                 </div>
 
-                <div class="form-group">
-                    <label for="password">Password</label>
-                    <input type="password" id="password" name="password"
-                           placeholder="Enter your password"
-                           autocomplete="current-password" required>
-                </div>
+                <button class="primary" id="verify-button" type="button">
+                    Verify OTP & Login
+                </button>
+            </div>
+        </form>
 
-                <button class="login-button" id="login-button" type="submit">Login</button>
-                <p id="message" role="status" aria-live="polite"></p>
-            </form>
+        <p id="message" role="status" aria-live="polite"></p>
+    </section>
+</main>
 
-            <nav class="links" aria-label="Other account options">
-                <a href="admin-login.html">Login as Admin</a>
-                <a href="register.html">New User? Register here</a>
-            </nav>
-        </section>
-    </main>
+<script>
+    const API = "http://127.0.0.1:8000";
 
-    <script>
-        const form = document.getElementById("login-form");
-        const message = document.getElementById("message");
-        const loginButton = document.getElementById("login-button");
+    const form = document.getElementById("login-form");
+    const emailInput = document.getElementById("email");
+    const passwordInput = document.getElementById("password");
+    const otpInput = document.getElementById("otp");
+    const otpSection = document.getElementById("otp-section");
+    const sendButton = document.getElementById("send-button");
+    const verifyButton = document.getElementById("verify-button");
+    const message = document.getElementById("message");
 
-        form.addEventListener("submit", async (event) => {
-            event.preventDefault();
+    let otpSent = false;
 
-            message.textContent = "";
-            message.className = "";
-            loginButton.disabled = true;
-            loginButton.textContent = "Logging in...";
+    function showMessage(text, type = "") {
+        message.textContent = text;
+        message.className = type;
+    }
 
-            const username = document.getElementById("username").value.trim();
-            const password = document.getElementById("password").value;
-
-            try {
-                // Change this URL if your FastAPI backend uses a different host or port.
-                const response = await fetch("http://127.0.0.1:8000/login", {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify({ username, password })
-                });
-
-                const data = await response.json().catch(() => ({}));
-
-                if (!response.ok) {
-                    message.textContent = data.detail || "Login failed. Check your credentials.";
-                    message.className = "error";
-                    return;
-                }
-
-                message.textContent = data.message || "Login successful!";
-                message.className = "success";
-
-                // Later, redirect to your workspace after the backend establishes
-                // a secure session or returns an authentication token.
-                // window.location.href = "workspace.html";
-            } catch (error) {
-                message.textContent =
-                    "Cannot connect to the Synapse server. Check that the backend is running.";
-                message.className = "error";
-            } finally {
-                loginButton.disabled = false;
-                loginButton.textContent = "Login";
-            }
+    async function post(path, body) {
+        const response = await fetch(API + path, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(body)
         });
-    </script>
+
+        const data = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+            throw new Error(data.detail || "Request failed.");
+        }
+
+        return data;
+    }
+
+    // Step 1: Verify email and password before sending OTP
+    form.addEventListener("submit", async function (event) {
+        event.preventDefault();
+
+        if (otpSent) return;
+
+        sendButton.disabled = true;
+        showMessage("Checking email and password...");
+
+        try {
+            const data = await post("/send-otp", {
+                email: emailInput.value.trim(),
+                password: passwordInput.value
+            });
+
+            otpSent = true;
+            emailInput.readOnly = true;
+            passwordInput.readOnly = true;
+
+            otpSection.classList.remove("hidden");
+            sendButton.classList.add("hidden");
+
+            showMessage(data.message, "success");
+            otpInput.focus();
+
+        } catch (error) {
+            showMessage(error.message, "error");
+        } finally {
+            sendButton.disabled = false;
+        }
+    });
+
+    // Step 2: Verify OTP
+    verifyButton.addEventListener("click", async function () {
+        if (!otpInput.reportValidity()) return;
+
+        verifyButton.disabled = true;
+        showMessage("Verifying OTP...");
+
+        try {
+            const data = await post("/verify-otp", {
+                email: emailInput.value.trim(),
+                otp: otpInput.value.trim()
+            });
+
+            showMessage(
+                data.message + " Welcome, " + data.username + "!",
+                "success"
+            );
+
+            // Redirect to the workspace here after implementing
+            // a proper authenticated session.
+
+        } catch (error) {
+            showMessage(error.message, "error");
+        } finally {
+            verifyButton.disabled = false;
+        }
+    });
+</script>
 </body>
 </html>

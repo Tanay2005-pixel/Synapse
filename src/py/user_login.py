@@ -211,3 +211,10 @@ def verify_otp(request: VerifyOTPRequest):
         "message": "Login successful!",
         "username": username,
     }
+
+@app.get("/register-page")
+def register_page(request: Request):
+    return templates.TemplateResponse(
+        request=request,
+        name="register.html"
+    )

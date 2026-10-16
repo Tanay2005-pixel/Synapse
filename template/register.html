@@ -1,0 +1,307 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SYNAPSE | Register</title>
+
+    <style>
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #f4f5f7;
+            color: #222;
+        }
+
+        header {
+            background: #d62828;
+            color: white;
+            text-align: center;
+            padding: 18px;
+        }
+
+        header h1 {
+            margin: 0;
+            letter-spacing: 4px;
+        }
+
+        main {
+            min-height: 90vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 24px 16px;
+        }
+
+        .card {
+            width: 100%;
+            max-width: 420px;
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px #00000017;
+        }
+
+        h2 { text-align: center; }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 25px;
+        }
+
+        .group { margin-bottom: 18px; }
+
+        label {
+            display: block;
+            margin-bottom: 7px;
+            font-weight: bold;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 15px;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #d62828;
+        }
+
+        .primary {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 6px;
+            background: #d62828;
+            color: white;
+            font-size: 15px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .primary:hover { background: #b91f1f; }
+
+        .primary:disabled {
+            opacity: 0.6;
+            cursor: wait;
+        }
+
+        .hidden { display: none; }
+
+        #message {
+            text-align: center;
+            margin-top: 16px;
+            line-height: 1.5;
+        }
+
+        .success { color: #18733b; }
+        .error { color: #b71f1f; }
+
+        .footer {
+            text-align: center;
+            margin-top: 22px;
+            font-size: 14px;
+        }
+
+        a {
+            color: #d62828;
+            text-decoration: none;
+        }
+
+        a:hover { text-decoration: underline; }
+    </style>
+</head>
+
+<body>
+<header>
+    <h1>SYNAPSE</h1>
+</header>
+
+<main>
+    <section class="card">
+        <h2>Create Account</h2>
+        <p class="subtitle">
+            Register your details for the shared workspace
+        </p>
+
+        <form id="registration-form">
+            <div class="group">
+                <label for="username">Username</label>
+                <input
+                    type="text"
+                    id="username"
+                    minlength="3"
+                    maxlength="40"
+                    autocomplete="username"
+                    placeholder="Choose a username"
+                    required
+                >
+            </div>
+
+            <div class="group">
+                <label for="email">Email Address</label>
+                <input
+                    type="email"
+                    id="email"
+                    autocomplete="email"
+                    placeholder="Enter your email address"
+                    required
+                >
+            </div>
+
+            <button
+                type="button"
+                class="primary"
+                id="send-otp-button"
+            >
+                Send Email OTP
+            </button>
+
+            <div id="otp-section" class="hidden">
+                <div class="group" style="margin-top: 22px;">
+                    <label for="otp">Email Verification OTP</label>
+                    <input
+                        type="text"
+                        id="otp"
+                        inputmode="numeric"
+                        autocomplete="one-time-code"
+                        pattern="[0-9]{6}"
+                        maxlength="6"
+                        placeholder="Enter 6-digit OTP"
+                        required
+                    >
+                </div>
+
+                <button
+                    type="button"
+                    class="primary"
+                    id="verify-button"
+                >
+                    Verify OTP & Register
+                </button>
+            </div>
+        </form>
+
+        <p id="message" role="status" aria-live="polite"></p>
+
+        <div class="footer">
+            Already have an account?
+            <a href="/login-page">Login here</a>
+        </div>
+    </section>
+</main>
+
+<script>
+    const API = "http://127.0.0.1:8000";
+
+    const form = document.getElementById("registration-form");
+    const username = document.getElementById("username");
+    const email = document.getElementById("email");
+    const otp = document.getElementById("otp");
+
+    const sendButton = document.getElementById("send-otp-button");
+    const verifyButton = document.getElementById("verify-button");
+    const otpSection = document.getElementById("otp-section");
+    const message = document.getElementById("message");
+
+    let otpSent = false;
+
+    function showMessage(text, type = "") {
+        message.textContent = text;
+        message.className = type;
+    }
+
+    async function postData(endpoint, data) {
+        const response = await fetch(API + endpoint, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(data)
+        });
+
+        const result = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+            throw new Error(result.detail || "Something went wrong.");
+        }
+
+        return result;
+    }
+
+    function getRegistrationData() {
+        return {
+            username: username.value.trim(),
+            email: email.value.trim()
+        };
+    }
+
+    // Step 1: Request email OTP
+    sendButton.addEventListener("click", async () => {
+        if (otpSent || !form.reportValidity()) return;
+
+        sendButton.disabled = true;
+        showMessage("Sending verification OTP...");
+
+        try {
+            const result = await postData(
+                "/registration/send-otp",
+                getRegistrationData()
+            );
+
+            otpSent = true;
+            username.readOnly = true;
+            email.readOnly = true;
+
+            otpSection.classList.remove("hidden");
+            showMessage(result.message, "success");
+            otp.focus();
+
+        } catch (error) {
+            showMessage(error.message, "error");
+        } finally {
+            sendButton.disabled = false;
+        }
+    });
+
+    // Step 2: Verify OTP and finish registration
+    verifyButton.addEventListener("click", async () => {
+        if (!otp.reportValidity()) return;
+
+        verifyButton.disabled = true;
+        showMessage("Verifying email...");
+
+        try {
+            const result = await postData(
+                "/registration/verify-otp",
+                {
+                    ...getRegistrationData(),
+                    otp: otp.value.trim()
+                }
+            );
+
+            showMessage(
+                result.message || "Registration successful!",
+                "success"
+            );
+
+            setTimeout(() => {
+                window.location.href = "/login-page";
+            }, 1200);
+
+        } catch (error) {
+            showMessage(error.message, "error");
+        } finally {
+            verifyButton.disabled = false;
+        }
+    });
+</script>
+</body>
+</html>

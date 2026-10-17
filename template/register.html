@@ -163,8 +163,31 @@
             >
                 Send Email OTP
             </button>
-
             <div id="otp-section" class="hidden">
+        <div class="group" style="margin-top: 22px;">
+            <label for="otp">Email Verification OTP</label>
+            <input
+                type="text"
+                id="otp"
+                name="otp"
+                inputmode="numeric"
+                autocomplete="one-time-code"
+                pattern="[0-9]{6}"
+                maxlength="6"
+                placeholder="Enter 6-digit OTP"
+                disabled
+            >
+        </div>
+
+        <button
+            type="button"
+            class="primary"
+            id="verify-button"
+        >
+            Verify OTP & Register
+        </button>
+        </div>
+            <div id="otp-section" class="hidden" style="display: none;">
                 <div class="group" style="margin-top: 22px;">
                     <label for="otp">Email Verification OTP</label>
                     <input
@@ -175,7 +198,7 @@
                         pattern="[0-9]{6}"
                         maxlength="6"
                         placeholder="Enter 6-digit OTP"
-                        required
+                        disabled
                     >
                 </div>
 
@@ -198,6 +221,7 @@
     </section>
 </main>
 
+
 <script>
     const API = "http://127.0.0.1:8000";
 
@@ -210,6 +234,9 @@
     const verifyButton = document.getElementById("verify-button");
     const otpSection = document.getElementById("otp-section");
     const message = document.getElementById("message");
+
+    otp.disabled = true;
+    otp.required = false;
 
     let otpSent = false;
 
@@ -260,8 +287,21 @@
             username.readOnly = true;
             email.readOnly = true;
 
+            // Show the OTP input and verification button
             otpSection.classList.remove("hidden");
-            showMessage(result.message, "success");
+            otpSection.style.display = "block";
+
+            otp.disabled = false;
+            otp.required = true;
+
+            // Hide the Send OTP button after successful sending
+            sendButton.style.display = "none";
+
+            showMessage(
+                result.message || "OTP sent! Check your email.",
+                "success"
+            );
+
             otp.focus();
 
         } catch (error) {
@@ -303,5 +343,6 @@
         }
     });
 </script>
+
 </body>
 </html>

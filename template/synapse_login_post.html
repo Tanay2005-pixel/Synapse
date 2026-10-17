@@ -180,6 +180,9 @@
     const verifyButton = document.getElementById("verify-button");
     const message = document.getElementById("message");
 
+    otpInput.disabled = true;
+    otpInput.required = false;
+
     let otpSent = false;
 
     function showMessage(text, type = "") {
@@ -196,10 +199,27 @@
             body: JSON.stringify(body)
         });
 
-        const data = await response.json().catch(() => ({}));
+        const responseText = await response.text();
+        let data = {};
+
+        if (responseText) {
+            try {
+                data = JSON.parse(responseText);
+            } catch {
+                if (!response.ok) {
+                    throw new Error(`Request failed (HTTP ${response.status}).`);
+                }
+
+                throw new Error("The server returned an invalid response.");
+            }
+        }
 
         if (!response.ok) {
-            throw new Error(data.detail || "Request failed.");
+            const detail = Array.isArray(data.detail)
+                ? data.detail.map((issue) => issue.msg).join(" ")
+                : data.detail;
+
+            throw new Error(detail || `Request failed (HTTP ${response.status}).`);
         }
 
         return data;
@@ -225,6 +245,8 @@
             passwordInput.readOnly = true;
 
             otpSection.classList.remove("hidden");
+            otpInput.disabled = false;
+            otpInput.required = true;
             sendButton.classList.add("hidden");
 
             showMessage(data.message, "success");

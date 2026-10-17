@@ -17,10 +17,17 @@ from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, EmailStr, Field
 
+from src.py.registration import (
+    send_registration_otp,
+    verify_registration_otp,
+    RegistrationRequest,
+    VerifyOTPRequest as RegistrationVerifyOTPRequest,
+)
+
 app = FastAPI(title="Synapse Login")
 
 BASE_DIR = Path(__file__).resolve().parents[2]
-DATA_FILE = BASE_DIR / "users.json"
+DATA_FILE = BASE_DIR / "user.json"
 templates = Jinja2Templates(
     directory=str(BASE_DIR / "template")
 )
@@ -43,11 +50,18 @@ class LoginRequest(BaseModel):
 
 
 class VerifyOTPRequest(BaseModel):
+
     email: EmailStr
     otp: str = Field(pattern=r"^\d{6}$")
 
+class LoginVerifyOTPRequest(BaseModel):
+    email: EmailStr
+    otp: str = Field(pattern=r"^[0-9]{6}$")
 
 def load_users():
+    if not DATA_FILE.exists():
+        return {}
+
     with open(DATA_FILE, "r", encoding="utf-8") as file:
         return json.load(file)
 
@@ -211,6 +225,14 @@ def verify_otp(request: VerifyOTPRequest):
         "message": "Login successful!",
         "username": username,
     }
+@app.post("/registration/send-otp")
+def register_send_otp(data: RegistrationRequest):
+    return send_registration_otp(data)
+
+
+@app.post("/registration/verify-otp")
+def register_verify_otp(data: RegistrationVerifyOTPRequest):
+    return verify_registration_otp(data)
 
 @app.get("/register-page")
 def register_page(request: Request):

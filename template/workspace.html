@@ -1,0 +1,892 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Synapse | Shared Workspace</title>
+
+    <style>
+        :root {
+            --red: #d62828;
+            --red-dark: #b71c1c;
+            --background: #f4f5f7;
+            --white: #ffffff;
+            --text: #252525;
+            --muted: #777777;
+            --border: #e6e7eb;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: var(--background);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        button, input {
+            font-family: inherit;
+            font-size: 14px;
+        }
+
+        button {
+            cursor: pointer;
+        }
+
+        /* Top header */
+        .top-strip {
+            height: 5px;
+            background: var(--red);
+        }
+
+        .header {
+            background: var(--white);
+            border-bottom: 1px solid var(--border);
+            padding: 16px 30px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 20px;
+        }
+
+        .header h1 {
+            font-size: 23px;
+            letter-spacing: 1px;
+        }
+
+        .user-area {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .user-info {
+            font-size: 13px;
+        }
+
+        .logout-btn {
+            padding: 9px 13px;
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 7px;
+            color: var(--text);
+        }
+
+        .logout-btn:hover {
+            border-color: var(--red);
+            color: var(--red);
+        }
+
+        /* Main layout */
+        .layout {
+            display: grid;
+            grid-template-columns: 225px minmax(0, 1fr);
+            min-height: calc(100vh - 75px);
+        }
+
+        .sidebar {
+            background: white;
+            border-right: 1px solid var(--border);
+            padding: 25px 15px;
+        }
+
+        .sidebar-label {
+            color: #999;
+            font-size: 11px;
+            font-weight: bold;
+            letter-spacing: 1px;
+            margin: 8px 12px 12px;
+        }
+
+        .nav-item {
+            width: 100%;
+            padding: 12px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: transparent;
+            border: none;
+            border-radius: 8px;
+            text-align: left;
+            color: #555;
+            margin-bottom: 5px;
+        }
+
+        .nav-item:hover,
+        .nav-item.active {
+            background: #fff0f0;
+            color: var(--red);
+        }
+
+        /* Workspace content */
+        .main {
+            padding: 30px;
+            min-width: 0;
+        }
+
+        .welcome {
+            margin-bottom: 25px;
+        }
+
+        .welcome h2 {
+            font-size: 25px;
+            margin-bottom: 7px;
+        }
+
+        /* Search and actions */
+        .toolbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 14px;
+            margin-bottom: 23px;
+            flex-wrap: wrap;
+        }
+
+        .search-box {
+            flex: 1;
+            min-width: 220px;
+            max-width: 470px;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 12px 14px;
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            outline: none;
+        }
+
+        .search-box input:focus,
+        .modal input:focus {
+            border-color: var(--red);
+        }
+
+        .actions {
+            display: flex;
+            gap: 9px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 11px 14px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: white;
+            color: #333;
+            transition: 0.15s;
+        }
+
+        .btn:hover {
+            border-color: var(--red);
+            color: var(--red);
+        }
+
+        .btn-primary {
+            background: var(--red);
+            color: white;
+            border-color: var(--red);
+        }
+
+        .btn-primary:hover {
+            background: var(--red-dark);
+            color: white;
+            border-color: var(--red-dark);
+        }
+
+        /* Summary cards */
+        .summary {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 17px;
+            margin-bottom: 28px;
+        }
+
+        .summary-card {
+            padding: 20px;
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 11px;
+        }
+
+        .summary-card h3 {
+            font-size: 25px;
+            margin-bottom: 5px;
+        }
+
+        .summary-card p {
+            color: var(--muted);
+            font-size: 13px;
+        }
+
+        /* File list */
+        .files-card {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 11px;
+            overflow: hidden;
+        }
+
+        .files-heading {
+            padding: 20px 22px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .files-heading h3 {
+            font-size: 17px;
+        }
+
+        .files-heading span {
+            color: var(--muted);
+            font-size: 12px;
+        }
+
+        .table-scroll {
+            overflow-x: auto;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            min-width: 650px;
+        }
+
+        th, td {
+            padding: 15px 20px;
+            text-align: left;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 13px;
+        }
+
+        th {
+            color: #888;
+            font-size: 11px;
+            letter-spacing: 0.5px;
+            font-weight: bold;
+            background: #fcfcfd;
+        }
+
+        tbody tr:hover {
+            background: #fffafa;
+        }
+
+        tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        .file-name {
+            display: flex;
+            align-items: center;
+            gap: 11px;
+            font-weight: 600;
+        }
+
+        .file-type {
+            color: #777;
+        }
+
+        .shared-badge {
+            display: inline-block;
+            padding: 5px 8px;
+            background: #edf7ff;
+            color: #27658c;
+            border-radius: 20px;
+            font-size: 11px;
+        }
+
+        .row-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .small-btn {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 7px 9px;
+        }
+
+        .small-btn:hover {
+            color: var(--red);
+            border-color: var(--red);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 45px 20px;
+            color: var(--muted);
+        }
+
+        .empty-state strong {
+            display: block;
+            color: #444;
+            margin-bottom: 7px;
+        }
+
+        /* Create file/folder dialog */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 10;
+            background: rgba(20, 20, 20, 0.45);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .modal-overlay.show {
+            display: flex;
+        }
+
+        .modal {
+            background: white;
+            width: 100%;
+            max-width: 410px;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 15px 45px rgba(0,0,0,0.15);
+        }
+
+        .modal h3 {
+            margin-bottom: 8px;
+            font-size: 20px;
+        }
+
+        .modal p {
+            color: var(--muted);
+            font-size: 13px;
+            line-height: 1.5;
+            margin-bottom: 20px;
+        }
+
+        .modal label {
+            display: block;
+            font-size: 13px;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        .modal input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--border);
+            border-radius: 7px;
+            outline: none;
+            margin-bottom: 20px;
+        }
+
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 9px;
+        }
+
+        #upload-input {
+            display: none;
+        }
+
+        @media (max-width: 950px) {
+            .layout {
+                grid-template-columns: 185px minmax(0, 1fr);
+            }
+
+            .main {
+                padding: 22px;
+            }
+
+            .summary {
+                gap: 10px;
+            }
+
+            .summary-card {
+                padding: 15px;
+            }
+        }
+
+        @media (max-width: 700px) {
+            .header {
+                padding: 14px 16px;
+            }
+
+            .layout {
+                grid-template-columns: 1fr;
+            }
+
+            .sidebar {
+                padding: 10px;
+                border-right: none;
+                border-bottom: 1px solid var(--border);
+                display: flex;
+                overflow-x: auto;
+                gap: 5px;
+            }
+
+            .sidebar-label {
+                display: none;
+            }
+
+            .nav-item {
+                width: auto;
+                flex-shrink: 0;
+                margin: 0;
+            }
+
+            .main {
+                padding: 18px 13px;
+            }
+
+            .welcome {
+                align-items: flex-start;
+                flex-direction: column;
+            }
+
+            .summary {
+                grid-template-columns: 1fr;
+            }
+
+            .toolbar {
+                align-items: stretch;
+            }
+
+            .search-box {
+                max-width: none;
+            }
+
+            .actions .btn {
+                flex: 1;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="top-strip"></div>
+
+    <header class="header">
+        <h1>SYNAPSE</h1>
+
+        <div class="user-area">
+            <span class="user-info" id="username">User</span>
+            <button class="logout-btn" id="logout-button">Log out</button>
+        </div>
+    </header>
+
+    <div class="layout">
+        <aside class="sidebar">
+            <p class="sidebar-label">WORKSPACE</p>
+
+            <button class="nav-item active" data-filter="all">All Files</button>
+
+            <button class="nav-item" data-filter="folder">Folders</button>
+
+            <button class="nav-item" data-filter="file">Files</button>
+
+            <button class="nav-item" data-filter="recent">Recent</button>
+        </aside>
+
+        <main class="main">
+            <section class="welcome">
+                <h2>Shared Workspace</h2>
+            </section>
+
+            <section class="toolbar">
+                <div class="search-box">
+                    <input
+                        type="search"
+                        id="search-input"
+                        placeholder="Search files and folders..."
+                        aria-label="Search files and folders"
+                    >
+                </div>
+
+                <div class="actions">
+                    <button class="btn" id="create-file-button">Create File</button>
+                    <button class="btn" id="create-folder-button">Create Folder</button>
+                    <button class="btn" id="upload-button">Upload</button>
+                    <button class="btn btn-primary" id="download-button">Download</button>
+                    <input type="file" id="upload-input" multiple>
+                </div>
+            </section>
+
+            <section class="summary">
+                <div class="summary-card">
+                    <h3 id="total-files">0</h3>
+                    <p>Total files</p>
+                </div>
+
+                <div class="summary-card">
+                    <h3 id="total-folders">0</h3>
+                    <p>Total folders</p>
+                </div>
+
+                <div class="summary-card">
+                    <h3 id="total-size">0 B</h3>
+                    <p>Visible file size</p>
+                </div>
+            </section>
+
+            <section class="files-card">
+                <div class="files-heading">
+                    <h3 id="list-title">All Files</h3>
+                    <span id="visible-count">0 items</span>
+                </div>
+
+                <div class="table-scroll">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>
+                                    <input type="checkbox" id="select-all"
+                                           aria-label="Select all visible items">
+                                    &nbsp; NAME
+                                </th>
+                                <th>TYPE</th>
+                                <th>SIZE</th>
+                                <th>LAST MODIFIED</th>
+                                <th>ACCESS</th>
+                            </tr>
+                        </thead>
+                        <tbody id="file-list"></tbody>
+                    </table>
+                </div>
+
+                <div class="empty-state" id="empty-state">
+                    <strong>No files or folders yet</strong>
+                    Upload a file or create a folder to get started.
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- Create file/folder dialog -->
+    <div class="modal-overlay" id="modal-overlay">
+        <div class="modal">
+            <h3 id="modal-title">Create File</h3>
+            <p id="modal-description">Enter a name for your new item.</p>
+
+            <form id="create-form">
+                <label for="item-name">Name</label>
+                <input
+                    id="item-name"
+                    type="text"
+                    placeholder="Enter name"
+                    maxlength="120"
+                    required
+                >
+
+                <div class="modal-actions">
+                    <button type="button" class="btn" id="cancel-button">
+                        Cancel
+                    </button>
+                    <button type="submit" class="btn btn-primary" id="confirm-button">
+                        Create
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const fileList = document.getElementById("file-list");
+        const searchInput = document.getElementById("search-input");
+        const uploadInput = document.getElementById("upload-input");
+        const emptyState = document.getElementById("empty-state");
+        const modalOverlay = document.getElementById("modal-overlay");
+        const itemNameInput = document.getElementById("item-name");
+
+        let items = [];
+        let selectedIds = new Set();
+        let currentFilter = "all";
+        let modalType = "file";
+
+        // Display a friendly name if supplied by the login workflow.
+        const currentUsername = sessionStorage.getItem("username") || "User";
+        document.getElementById("username").textContent = currentUsername;
+
+        function formatSize(bytes) {
+            if (!bytes) return "0 B";
+            const units = ["B", "KB", "MB", "GB", "TB"];
+            const index = Math.min(
+                Math.floor(Math.log(bytes) / Math.log(1024)),
+                units.length - 1
+            );
+            return (bytes / Math.pow(1024, index)).toFixed(index === 0 ? 0 : 1)
+                + " " + units[index];
+        }
+
+        function formatDate(date) {
+            return new Intl.DateTimeFormat("en-IN", {
+                day: "2-digit",
+                month: "short",
+                year: "numeric"
+            }).format(date);
+        }
+
+        function escapeHTML(value) {
+            return String(value).replace(/[&<>"']/g, char => ({
+                "&": "&amp;",
+                "<": "&lt;",
+                ">": "&gt;",
+                '"': "&quot;",
+                "'": "&#39;"
+            })[char]);
+        }
+
+        function getVisibleItems() {
+            const query = searchInput.value.trim().toLowerCase();
+
+            return items.filter(item => {
+                const matchesSearch = item.name.toLowerCase().includes(query);
+                const matchesFilter =
+                    currentFilter === "all" ||
+                    (currentFilter === "file" && item.kind === "file") ||
+                    (currentFilter === "folder" && item.kind === "folder") ||
+                    (currentFilter === "recent" &&
+                        Date.now() - item.modified.getTime() < 7 * 86400000);
+
+                return matchesSearch && matchesFilter;
+            });
+        }
+
+        function render() {
+            const visible = getVisibleItems();
+
+            fileList.innerHTML = "";
+            emptyState.style.display = visible.length ? "none" : "block";
+
+            visible.forEach(item => {
+                const row = document.createElement("tr");
+                const checked = selectedIds.has(item.id);
+
+                row.innerHTML = `
+                    <td>
+                        <div class="file-name">
+                            <input type="checkbox" class="item-checkbox"
+                                   data-id="${item.id}" ${checked ? "checked" : ""}>
+                            <span>${escapeHTML(item.name)}</span>
+                        </div>
+                    </td>
+                    <td class="file-type">${item.kind === "folder" ? "Folder" : escapeHTML(item.type)}</td>
+                    <td>${item.kind === "folder" ? "—" : formatSize(item.size)}</td>
+                    <td>${formatDate(item.modified)}</td>
+                    <td><span class="shared-badge">Workspace</span></td>
+                `;
+
+                fileList.appendChild(row);
+            });
+
+            document.getElementById("visible-count").textContent =
+                `${visible.length} item${visible.length === 1 ? "" : "s"}`;
+
+            document.getElementById("total-files").textContent =
+                items.filter(item => item.kind === "file").length;
+
+            document.getElementById("total-folders").textContent =
+                items.filter(item => item.kind === "folder").length;
+
+            document.getElementById("total-size").textContent =
+                formatSize(items.reduce(
+                    (sum, item) => sum + (item.kind === "file" ? item.size : 0), 0
+                ));
+
+            document.getElementById("select-all").checked =
+                visible.length > 0 && visible.every(item => selectedIds.has(item.id));
+        }
+
+        fileList.addEventListener("change", event => {
+            const checkbox = event.target.closest(".item-checkbox");
+            if (!checkbox) return;
+
+            const id = Number(checkbox.dataset.id);
+
+            if (checkbox.checked) selectedIds.add(id);
+            else selectedIds.delete(id);
+
+            render();
+        });
+
+        document.getElementById("select-all").addEventListener("change", event => {
+            getVisibleItems().forEach(item => {
+                if (event.target.checked) selectedIds.add(item.id);
+                else selectedIds.delete(item.id);
+            });
+            render();
+        });
+
+        searchInput.addEventListener("input", render);
+
+        document.querySelectorAll(".nav-item").forEach(button => {
+            button.addEventListener("click", () => {
+                document.querySelectorAll(".nav-item").forEach(item =>
+                    item.classList.remove("active")
+                );
+
+                button.classList.add("active");
+                currentFilter = button.dataset.filter;
+
+                const titles = {
+                    all: "All Files",
+                    file: "Files",
+                    folder: "Folders",
+                    recent: "Recent Items"
+                };
+
+                document.getElementById("list-title").textContent =
+                    titles[currentFilter];
+
+                render();
+            });
+        });
+
+        function openModal(type) {
+            modalType = type;
+
+            document.getElementById("modal-title").textContent =
+                type === "folder" ? "Create Folder" : "Create File";
+
+            document.getElementById("modal-description").textContent =
+                type === "folder"
+                    ? "Enter a name for your new folder."
+                    : "Enter a name for your new text file.";
+
+            itemNameInput.value = "";
+            modalOverlay.classList.add("show");
+            itemNameInput.focus();
+        }
+
+        function closeModal() {
+            modalOverlay.classList.remove("show");
+        }
+
+        document.getElementById("create-file-button").addEventListener("click", () => {
+            openModal("file");
+        });
+
+        document.getElementById("create-folder-button").addEventListener("click", () => {
+            openModal("folder");
+        });
+
+        document.getElementById("cancel-button").addEventListener("click", closeModal);
+
+        modalOverlay.addEventListener("click", event => {
+            if (event.target === modalOverlay) closeModal();
+        });
+
+        document.getElementById("create-form").addEventListener("submit", event => {
+            event.preventDefault();
+
+            const name = itemNameInput.value.trim();
+            if (!name) return;
+
+            if (items.some(item => item.name.toLowerCase() === name.toLowerCase())) {
+                alert("An item with this name already exists.");
+                return;
+            }
+
+            const item = {
+                id: Date.now() + Math.floor(Math.random() * 1000),
+                name: modalType === "file" && !name.includes(".")
+                    ? name + ".txt"
+                    : name,
+                kind: modalType,
+                type: modalType === "folder" ? "Folder" : "Text file",
+                size: 0,
+                modified: new Date(),
+                file: null
+            };
+
+            items.unshift(item);
+            selectedIds.clear();
+            closeModal();
+            render();
+
+            // A newly created text file can be downloaded as a blank file.
+        });
+
+        document.getElementById("upload-button").addEventListener("click", () => {
+            uploadInput.click();
+        });
+
+        uploadInput.addEventListener("change", event => {
+            const files = Array.from(event.target.files);
+
+            files.forEach(file => {
+                const duplicate = items.some(item =>
+                    item.kind === "file" &&
+                    item.name.toLowerCase() === file.name.toLowerCase()
+                );
+
+                if (duplicate) return;
+
+                items.unshift({
+                    id: Date.now() + Math.floor(Math.random() * 100000),
+                    name: file.name,
+                    kind: "file",
+                    type: file.type || "File",
+                    size: file.size,
+                    modified: new Date(),
+                    file: file
+                });
+            });
+
+            render();
+            uploadInput.value = "";
+        });
+
+        document.getElementById("download-button").addEventListener("click", () => {
+            const selected = items.filter(item => selectedIds.has(item.id));
+
+            if (!selected.length) {
+                alert("Please select a file to download.");
+                return;
+            }
+
+            const downloadable = selected.filter(item => item.kind === "file");
+
+            if (!downloadable.length) {
+                alert("Please select a file, not just a folder.");
+                return;
+            }
+
+            downloadable.forEach(item => {
+                let blob;
+
+                if (item.file) {
+                    blob = item.file;
+                } else {
+                    blob = new Blob([""], { type: "text/plain" });
+                }
+
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement("a");
+                link.href = url;
+                link.download = item.name;
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+                setTimeout(() => URL.revokeObjectURL(url), 1000);
+            });
+        });
+
+        document.getElementById("logout-button").addEventListener("click", () => {
+            sessionStorage.removeItem("username");
+            window.location.href = "/login-page";
+        });
+
+        render();
+    </script>
+</body>
+</html>

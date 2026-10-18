@@ -6,120 +6,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SYNAPSE | Register</title>
 
-    <style>
-        * { box-sizing: border-box; }
-
-        body {
-            margin: 0;
-            font-family: Arial, sans-serif;
-            background: #f4f5f7;
-            color: #222;
-        }
-
-        header {
-            background: #d62828;
-            color: white;
-            text-align: center;
-            padding: 18px;
-        }
-
-        header h1 {
-            margin: 0;
-            letter-spacing: 4px;
-        }
-
-        main {
-            min-height: 90vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 24px 16px;
-        }
-
-        .card {
-            width: 100%;
-            max-width: 420px;
-            background: white;
-            padding: 30px;
-            border-radius: 12px;
-            box-shadow: 0 8px 24px #00000017;
-        }
-
-        h2 { text-align: center; }
-
-        .subtitle {
-            text-align: center;
-            color: #666;
-            margin-bottom: 25px;
-        }
-
-        .group { margin-bottom: 18px; }
-
-        label {
-            display: block;
-            margin-bottom: 7px;
-            font-weight: bold;
-        }
-
-        input {
-            width: 100%;
-            padding: 12px;
-            border: 1px solid #ccc;
-            border-radius: 6px;
-            font-size: 15px;
-        }
-
-        input:focus {
-            outline: none;
-            border-color: #d62828;
-        }
-
-        .primary {
-            width: 100%;
-            padding: 12px;
-            border: none;
-            border-radius: 6px;
-            background: #d62828;
-            color: white;
-            font-size: 15px;
-            font-weight: bold;
-            cursor: pointer;
-        }
-
-        .primary:hover { background: #b91f1f; }
-
-        .primary:disabled {
-            opacity: 0.6;
-            cursor: wait;
-        }
-
-        .hidden { display: none; }
-
-        #message {
-            text-align: center;
-            margin-top: 16px;
-            line-height: 1.5;
-        }
-
-        .success { color: #18733b; }
-        .error { color: #b71f1f; }
-
-        .footer {
-            text-align: center;
-            margin-top: 22px;
-            font-size: 14px;
-        }
-
-        a {
-            color: #d62828;
-            text-decoration: none;
-        }
-
-        a:hover { text-decoration: underline; }
-    </style>
+    <link rel="stylesheet" href="/static/forms.css">
 </head>
 
-<body>
+<body class="register-page">
 <header>
     <h1>SYNAPSE</h1>
 </header>
@@ -164,7 +54,7 @@
                 Send Email OTP
             </button>
             <div id="otp-section" class="hidden">
-        <div class="group" style="margin-top: 22px;">
+        <div class="group otp-group">
             <label for="otp">Email Verification OTP</label>
             <input
                 type="text"
@@ -187,8 +77,8 @@
             Verify OTP & Register
         </button>
         </div>
-            <div id="otp-section" class="hidden" style="display: none;">
-                <div class="group" style="margin-top: 22px;">
+            <div id="otp-section" class="hidden">
+                <div class="group otp-group">
                     <label for="otp">Email Verification OTP</label>
                     <input
                         type="text"

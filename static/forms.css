@@ -1,0 +1,167 @@
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #f4f5f7;
+    color: #222;
+}
+
+header {
+    background: #d62828;
+    color: white;
+    text-align: center;
+    padding: 18px;
+}
+
+header h1 {
+    margin: 0;
+    letter-spacing: 4px;
+}
+
+main {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.register-page main {
+    min-height: 90vh;
+    padding: 24px 16px;
+}
+
+.login-page main {
+    min-height: 85vh;
+    padding: 20px;
+}
+
+.card {
+    width: 100%;
+    background: white;
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 8px 24px #00000017;
+}
+
+.register-page .card {
+    max-width: 420px;
+}
+
+.login-page .card {
+    max-width: 400px;
+}
+
+h2 {
+    text-align: center;
+}
+
+.subtitle {
+    text-align: center;
+    color: #666;
+    margin-bottom: 25px;
+}
+
+.group {
+    margin-bottom: 18px;
+}
+
+.login-page .group {
+    margin-bottom: 17px;
+}
+
+label {
+    display: block;
+    margin-bottom: 7px;
+    font-weight: bold;
+}
+
+input {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+}
+
+.register-page input {
+    font-size: 15px;
+}
+
+.login-page input {
+    font-size: 16px;
+}
+
+.register-page input:focus {
+    outline: none;
+    border-color: #d62828;
+}
+
+.primary {
+    width: 100%;
+    padding: 12px;
+    border: none;
+    border-radius: 6px;
+    background: #d62828;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.register-page .primary {
+    font-size: 15px;
+}
+
+.login-page .primary {
+    font-size: 16px;
+}
+
+.register-page .primary:hover {
+    background: #b91f1f;
+}
+
+.primary:disabled {
+    opacity: 0.6;
+    cursor: wait;
+}
+
+.hidden {
+    display: none;
+}
+
+#message {
+    text-align: center;
+    margin-top: 16px;
+    line-height: 1.5;
+}
+
+.success {
+    color: #18733b;
+}
+
+.error {
+    color: #b71f1f;
+}
+
+.footer {
+    text-align: center;
+    margin-top: 22px;
+    font-size: 14px;
+}
+
+.register-page .otp-group {
+    margin-top: 22px;
+}
+
+.login-page .otp-group {
+    margin-top: 20px;
+}
+
+.register-page a {
+    color: #d62828;
+    text-decoration: none;
+}
+
+.register-page a:hover {
+    text-decoration: underline;
+}

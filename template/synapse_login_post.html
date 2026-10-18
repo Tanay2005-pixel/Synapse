@@ -6,105 +6,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SYNAPSE | Login</title>
 
-    <style>
-        * { box-sizing: border-box; }
-
-        body {
-            margin: 0;
-            font-family: Arial, sans-serif;
-            background: #f4f5f7;
-            color: #222;
-        }
-
-        header {
-            background: #d62828;
-            color: white;
-            text-align: center;
-            padding: 18px;
-        }
-
-        header h1 {
-            margin: 0;
-            letter-spacing: 4px;
-        }
-
-        .footer {
-            text-align: center;
-            margin-top: 22px;
-            font-size: 14px;
-        }
-
-        main {
-            min-height: 85vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
-        }
-
-        .card {
-            width: 100%;
-            max-width: 400px;
-            background: white;
-            padding: 30px;
-            border-radius: 12px;
-            box-shadow: 0 8px 24px #00000017;
-        }
-
-        h2 { text-align: center; }
-
-        .subtitle {
-            text-align: center;
-            color: #666;
-            margin-bottom: 25px;
-        }
-
-        label {
-            display: block;
-            margin-bottom: 7px;
-            font-weight: bold;
-        }
-
-        .group { margin-bottom: 17px; }
-
-        input {
-            width: 100%;
-            padding: 12px;
-            border: 1px solid #ccc;
-            border-radius: 6px;
-            font-size: 16px;
-        }
-
-        .primary {
-            width: 100%;
-            padding: 12px;
-            border: none;
-            border-radius: 6px;
-            background: #d62828;
-            color: white;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-        }
-
-        .primary:disabled {
-            opacity: 0.6;
-            cursor: wait;
-        }
-
-        #message {
-            margin-top: 16px;
-            text-align: center;
-            line-height: 1.5;
-        }
-
-        .error { color: #b71f1f; }
-        .success { color: #18733b; }
-        .hidden { display: none; }
-    </style>
+    <link rel="stylesheet" href="/static/forms.css">
 </head>
 
-<body>
+<body class="login-page">
 <header>
     <h1>SYNAPSE</h1>
 </header>
@@ -116,32 +21,35 @@
 
         <form id="login-form">
             <div class="group">
-                <label for="email">Registered Email</label>
+                <label for="username">Username</label>
                 <input
-                    id="email"
-                    type="email"
+                    id="username"
+                    type="text"
+                    minlength="3"
+                    maxlength="40"
                     autocomplete="username"
-                    placeholder="you@example.com"
+                    placeholder="Enter your username"
                     required
                 >
             </div>
 
             <div class="group">
-                <label for="password">Password</label>
+                <label for="email">Registered Email</label>
                 <input
-                    id="password"
-                    type="password"
-                    autocomplete="current-password"
+                    id="email"
+                    type="email"
+                    autocomplete="email"
+                    placeholder="you@example.com"
                     required
                 >
             </div>
 
             <button class="primary" id="send-button" type="submit">
-                Verify Credentials & Send OTP
+                Send Email OTP
             </button>
 
             <div id="otp-section" class="hidden">
-                <div class="group" style="margin-top: 20px;">
+                <div class="group otp-group">
                     <label for="otp">Enter 6-digit OTP</label>
                     <input
                         id="otp"
@@ -172,8 +80,8 @@
     const API = "http://127.0.0.1:8000";
 
     const form = document.getElementById("login-form");
+    const usernameInput = document.getElementById("username");
     const emailInput = document.getElementById("email");
-    const passwordInput = document.getElementById("password");
     const otpInput = document.getElementById("otp");
     const otpSection = document.getElementById("otp-section");
     const sendButton = document.getElementById("send-button");
@@ -225,24 +133,24 @@
         return data;
     }
 
-    // Step 1: Verify email and password before sending OTP
+    // Step 1: Verify the registered username and email before sending OTP
     form.addEventListener("submit", async function (event) {
         event.preventDefault();
 
         if (otpSent) return;
 
         sendButton.disabled = true;
-        showMessage("Checking email and password...");
+        showMessage("Checking username and email...");
 
         try {
             const data = await post("/send-otp", {
+                username: usernameInput.value.trim(),
                 email: emailInput.value.trim(),
-                password: passwordInput.value
             });
 
             otpSent = true;
+            usernameInput.readOnly = true;
             emailInput.readOnly = true;
-            passwordInput.readOnly = true;
 
             otpSection.classList.remove("hidden");
             otpInput.disabled = false;
@@ -268,6 +176,7 @@
 
         try {
             const data = await post("/verify-otp", {
+                username: usernameInput.value.trim(),
                 email: emailInput.value.trim(),
                 otp: otpInput.value.trim()
             });
@@ -277,8 +186,8 @@
                 "success"
             );
 
-            // Redirect to the workspace here after implementing
-            // a proper authenticated session.
+            sessionStorage.setItem("username", data.username);
+            window.location.href = "/workspace-page";
 
         } catch (error) {
             showMessage(error.message, "error");

@@ -16,6 +16,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, EmailStr, Field
+from src.py.db_connection import get_db_connection
 
 from src.py.registration import (
     send_registration_otp,
@@ -27,7 +28,7 @@ from src.py.registration import (
 app = FastAPI(title="Synapse Login")
 
 BASE_DIR = Path(__file__).resolve().parents[2]
-DATA_FILE = BASE_DIR / "user.json"
+
 templates = Jinja2Templates(
     directory=str(BASE_DIR / "template")
 )
@@ -58,25 +59,31 @@ class LoginVerifyOTPRequest(BaseModel):
     email: EmailStr
     otp: str = Field(pattern=r"^[0-9]{6}$")
 
-def load_users():
-    if not DATA_FILE.exists():
-        return {}
 
-    with open(DATA_FILE, "r", encoding="utf-8") as file:
-        return json.load(file)
 
 
 def find_user_by_email(email):
     email = email.strip().casefold()
 
-    for user in load_users().values():
-        if (
-            isinstance(user, dict)
-            and str(user.get("email", "")).strip().casefold() == email
-        ):
-            return user
+    with get_db_connection() as conn:
+        row = conn.execute(
+            """
+            SELECT username, email, password_hash
+            FROM users
+            WHERE LOWER(email) = %s
+            LIMIT 1
+            """,
+            (email,),
+        ).fetchone()
 
-    return None
+    if not row:
+        return None
+
+    return {
+        "username": row[0],
+        "email": row[1],
+        "password": json.loads(row[2]) if row[2] else {},
+    }
 
 
 def verify_password(password, stored):

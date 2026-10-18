@@ -2,7 +2,10 @@
 import os
 import json
 import time
+import hmac
+import base64
 import secrets
+import hashlib
 import smtplib
 
 from pathlib import Path
@@ -12,8 +15,8 @@ from typing import Any
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, EmailStr, Field
+from src.py.db_connection import get_db_connection
 
 from src.py.registration import (
     send_registration_otp,
@@ -25,12 +28,7 @@ from src.py.registration import (
 app = FastAPI(title="Synapse Login")
 
 BASE_DIR = Path(__file__).resolve().parents[2]
-DATA_FILE = BASE_DIR / "user.json"
-app.mount(
-    "/static",
-    StaticFiles(directory=str(BASE_DIR / "static")),
-    name="static",
-)
+
 templates = Jinja2Templates(
     directory=str(BASE_DIR / "template")
 )
@@ -47,40 +45,67 @@ OTP_EXPIRY = 300
 pending_otps: dict[str, dict[str, Any]] = {}
 
 
-class LoginOTPRequest(BaseModel):
-    username: str = Field(min_length=3, max_length=40)
+class LoginRequest(BaseModel):
     email: EmailStr
+    password: str = Field(min_length=1, max_length=128)
 
 
 class VerifyOTPRequest(BaseModel):
-    username: str = Field(min_length=3, max_length=40)
+
     email: EmailStr
     otp: str = Field(pattern=r"^\d{6}$")
 
-
-def load_users():
-    if not DATA_FILE.exists():
-        return {}
-
-    with open(DATA_FILE, "r", encoding="utf-8") as file:
-        return json.load(file)
+class LoginVerifyOTPRequest(BaseModel):
+    email: EmailStr
+    otp: str = Field(pattern=r"^[0-9]{6}$")
 
 
-def find_user_by_username_and_email(username, email):
-    username = username.strip().casefold()
+
+
+def find_user_by_email(email):
     email = email.strip().casefold()
 
-    for key, user in load_users().items():
-        if not isinstance(user, dict):
-            continue
+    with get_db_connection() as conn:
+        row = conn.execute(
+            """
+            SELECT username, email, password_hash
+            FROM users
+            WHERE LOWER(email) = %s
+            LIMIT 1
+            """,
+            (email,),
+        ).fetchone()
 
-        registered_username = str(user.get("username", key)).strip()
-        registered_email = str(user.get("email", "")).strip()
-        if (registered_username.casefold() == username
-                and registered_email.casefold() == email):
-            return user
+    if not row:
+        return None
 
-    return None
+    return {
+        "username": row[0],
+        "email": row[1],
+        "password": json.loads(row[2]) if row[2] else {},
+    }
+
+
+def verify_password(password, stored):
+    try:
+        if stored.get("algorithm") != "pbkdf2_sha256":
+            return False
+
+        salt = base64.b64decode(stored["salt"], validate=True)
+        expected = base64.b64decode(stored["hash"], validate=True)
+        iterations = int(stored["iterations"])
+
+        actual = hashlib.pbkdf2_hmac(
+            "sha256",
+            password.encode("utf-8"),
+            salt,
+            iterations,
+        )
+
+        return hmac.compare_digest(actual, expected)
+
+    except (KeyError, TypeError, ValueError):
+        return False
 
 
 def send_email_otp(email, otp):
@@ -129,29 +154,24 @@ def login_page(request: Request):
     )
 
 
-@app.get("/workspace-page")
-def workspace_page(request: Request):
-    return templates.TemplateResponse(
-        request=request,
-        name="workspace.html",
-    )
-
-
 @app.post("/send-otp")
-def send_otp(credentials: LoginOTPRequest):
-    username = credentials.username.strip()
+def send_otp(credentials: LoginRequest):
     email = str(credentials.email).strip().casefold()
 
-    # Step 1: Match both submitted fields against the registered account.
-    user = find_user_by_username_and_email(username, email)
+    # Step 1: Find existing user by registered email
+    user = find_user_by_email(email)
 
-    if not user:
+    # Step 2: Verify password before sending OTP
+    if not user or not verify_password(
+        credentials.password,
+        user.get("password", {}),
+    ):
         raise HTTPException(
             status_code=401,
-            detail="Invalid username or email.",
+            detail="Invalid email or password.",
         )
 
-    # Step 2: Apply a resend cooldown.
+    # Step 3: Apply a resend cooldown
     now = time.time()
     previous = pending_otps.get(email)
 
@@ -161,7 +181,7 @@ def send_otp(credentials: LoginOTPRequest):
             detail="Please wait 30 seconds before requesting another OTP.",
         )
 
-    # Step 3: Generate and email a six-digit OTP.
+    # Step 4: Generate and email a six-digit OTP
     otp = f"{secrets.randbelow(1_000_000):06d}"
 
     # Send first; only save a pending OTP if sending succeeds
@@ -172,10 +192,10 @@ def send_otp(credentials: LoginOTPRequest):
         "expires_at": now + OTP_EXPIRY,
         "last_sent": now,
         "attempts": 0,
-        "username": str(user.get("username") or username).strip(),
+        "username": user.get("username", ""),
     }
 
-    return {"message": "OTP sent to your email."}
+    return {"message": "Credentials verified. OTP sent to your email."}
 
 
 @app.post("/verify-otp")
@@ -185,12 +205,6 @@ def verify_otp(request: VerifyOTPRequest):
 
     if not record or time.time() > record["expires_at"]:
         pending_otps.pop(email, None)
-        raise HTTPException(
-            status_code=401,
-            detail="OTP expired or invalid. Request a new OTP.",
-        )
-
-    if record["username"].strip().casefold() != request.username.strip().casefold():
         raise HTTPException(
             status_code=401,
             detail="OTP expired or invalid. Request a new OTP.",

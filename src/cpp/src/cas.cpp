@@ -38,10 +38,10 @@ bool CASStorage::store_chunk(const std::string& hash, const std::vector<uint8_t>
         out.write(reinterpret_cast<const char*>(data.data()), data.size());
     }    
     std::error_code ec;
-    fs::create_hard_link(tmep_file,target_path,ec);
+    fs::create_hard_link(temp_file,target_path,ec);
 
     std::error_code ec2;
-    fs::(temp_file,ec2);
+    fs::remove(temp_file,ec2);
     if(ec)
     {
         return false;

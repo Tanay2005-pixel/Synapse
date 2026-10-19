@@ -6,469 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Synapse | Shared Workspace</title>
 
-    <style>
-        :root {
-            --red: #d62828;
-            --red-dark: #b71c1c;
-            --background: #f4f5f7;
-            --white: #ffffff;
-            --text: #252525;
-            --muted: #777777;
-            --border: #e6e7eb;
-        }
-
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-
-        body {
-            font-family: Arial, sans-serif;
-            background: var(--background);
-            color: var(--text);
-            min-height: 100vh;
-        }
-
-        button, input {
-            font-family: inherit;
-            font-size: 14px;
-        }
-
-        button {
-            cursor: pointer;
-        }
-
-        /* Top header */
-        .top-strip {
-            height: 5px;
-            background: var(--red);
-        }
-
-        .header {
-            background: var(--white);
-            border-bottom: 1px solid var(--border);
-            padding: 16px 30px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 20px;
-        }
-
-        .header h1 {
-            font-size: 23px;
-            letter-spacing: 1px;
-        }
-
-        .user-area {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .user-info {
-            font-size: 13px;
-        }
-
-        .logout-btn {
-            padding: 9px 13px;
-            background: white;
-            border: 1px solid var(--border);
-            border-radius: 7px;
-            color: var(--text);
-        }
-
-        .logout-btn:hover {
-            border-color: var(--red);
-            color: var(--red);
-        }
-
-        /* Main layout */
-        .layout {
-            display: grid;
-            grid-template-columns: 225px minmax(0, 1fr);
-            min-height: calc(100vh - 75px);
-        }
-
-        .sidebar {
-            background: white;
-            border-right: 1px solid var(--border);
-            padding: 25px 15px;
-        }
-
-        .sidebar-label {
-            color: #999;
-            font-size: 11px;
-            font-weight: bold;
-            letter-spacing: 1px;
-            margin: 8px 12px 12px;
-        }
-
-        .nav-item {
-            width: 100%;
-            padding: 12px;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            background: transparent;
-            border: none;
-            border-radius: 8px;
-            text-align: left;
-            color: #555;
-            margin-bottom: 5px;
-        }
-
-        .nav-item:hover,
-        .nav-item.active {
-            background: #fff0f0;
-            color: var(--red);
-        }
-
-        /* Workspace content */
-        .main {
-            padding: 30px;
-            min-width: 0;
-        }
-
-        .welcome {
-            margin-bottom: 25px;
-        }
-
-        .welcome h2 {
-            font-size: 25px;
-            margin-bottom: 7px;
-        }
-
-        /* Search and actions */
-        .toolbar {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 14px;
-            margin-bottom: 23px;
-            flex-wrap: wrap;
-        }
-
-        .search-box {
-            flex: 1;
-            min-width: 220px;
-            max-width: 470px;
-        }
-
-        .search-box input {
-            width: 100%;
-            padding: 12px 14px;
-            background: white;
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            outline: none;
-        }
-
-        .search-box input:focus,
-        .modal input:focus {
-            border-color: var(--red);
-        }
-
-        .actions {
-            display: flex;
-            gap: 9px;
-            flex-wrap: wrap;
-        }
-
-        .btn {
-            padding: 11px 14px;
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            background: white;
-            color: #333;
-            transition: 0.15s;
-        }
-
-        .btn:hover {
-            border-color: var(--red);
-            color: var(--red);
-        }
-
-        .btn-primary {
-            background: var(--red);
-            color: white;
-            border-color: var(--red);
-        }
-
-        .btn-primary:hover {
-            background: var(--red-dark);
-            color: white;
-            border-color: var(--red-dark);
-        }
-
-        /* Summary cards */
-        .summary {
-            display: grid;
-            grid-template-columns: repeat(3, minmax(0, 1fr));
-            gap: 17px;
-            margin-bottom: 28px;
-        }
-
-        .summary-card {
-            padding: 20px;
-            background: white;
-            border: 1px solid var(--border);
-            border-radius: 11px;
-        }
-
-        .summary-card h3 {
-            font-size: 25px;
-            margin-bottom: 5px;
-        }
-
-        .summary-card p {
-            color: var(--muted);
-            font-size: 13px;
-        }
-
-        /* File list */
-        .files-card {
-            background: white;
-            border: 1px solid var(--border);
-            border-radius: 11px;
-            overflow: hidden;
-        }
-
-        .files-heading {
-            padding: 20px 22px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 12px;
-            border-bottom: 1px solid var(--border);
-        }
-
-        .files-heading h3 {
-            font-size: 17px;
-        }
-
-        .files-heading span {
-            color: var(--muted);
-            font-size: 12px;
-        }
-
-        .table-scroll {
-            overflow-x: auto;
-        }
-
-        table {
-            border-collapse: collapse;
-            width: 100%;
-            min-width: 650px;
-        }
-
-        th, td {
-            padding: 15px 20px;
-            text-align: left;
-            border-bottom: 1px solid #f0f0f0;
-            font-size: 13px;
-        }
-
-        th {
-            color: #888;
-            font-size: 11px;
-            letter-spacing: 0.5px;
-            font-weight: bold;
-            background: #fcfcfd;
-        }
-
-        tbody tr:hover {
-            background: #fffafa;
-        }
-
-        tbody tr:last-child td {
-            border-bottom: none;
-        }
-
-        .file-name {
-            display: flex;
-            align-items: center;
-            gap: 11px;
-            font-weight: 600;
-        }
-
-        .file-type {
-            color: #777;
-        }
-
-        .shared-badge {
-            display: inline-block;
-            padding: 5px 8px;
-            background: #edf7ff;
-            color: #27658c;
-            border-radius: 20px;
-            font-size: 11px;
-        }
-
-        .row-actions {
-            display: flex;
-            gap: 8px;
-        }
-
-        .small-btn {
-            background: white;
-            border: 1px solid var(--border);
-            border-radius: 6px;
-            padding: 7px 9px;
-        }
-
-        .small-btn:hover {
-            color: var(--red);
-            border-color: var(--red);
-        }
-
-        .empty-state {
-            text-align: center;
-            padding: 45px 20px;
-            color: var(--muted);
-        }
-
-        .empty-state strong {
-            display: block;
-            color: #444;
-            margin-bottom: 7px;
-        }
-
-        /* Create file/folder dialog */
-        .modal-overlay {
-            position: fixed;
-            inset: 0;
-            z-index: 10;
-            background: rgba(20, 20, 20, 0.45);
-            display: none;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-        }
-
-        .modal-overlay.show {
-            display: flex;
-        }
-
-        .modal {
-            background: white;
-            width: 100%;
-            max-width: 410px;
-            border-radius: 12px;
-            padding: 25px;
-            box-shadow: 0 15px 45px rgba(0,0,0,0.15);
-        }
-
-        .modal h3 {
-            margin-bottom: 8px;
-            font-size: 20px;
-        }
-
-        .modal p {
-            color: var(--muted);
-            font-size: 13px;
-            line-height: 1.5;
-            margin-bottom: 20px;
-        }
-
-        .modal label {
-            display: block;
-            font-size: 13px;
-            font-weight: bold;
-            margin-bottom: 8px;
-        }
-
-        .modal input {
-            width: 100%;
-            padding: 12px;
-            border: 1px solid var(--border);
-            border-radius: 7px;
-            outline: none;
-            margin-bottom: 20px;
-        }
-
-        .modal-actions {
-            display: flex;
-            justify-content: flex-end;
-            gap: 9px;
-        }
-
-        #upload-input {
-            display: none;
-        }
-
-        @media (max-width: 950px) {
-            .layout {
-                grid-template-columns: 185px minmax(0, 1fr);
-            }
-
-            .main {
-                padding: 22px;
-            }
-
-            .summary {
-                gap: 10px;
-            }
-
-            .summary-card {
-                padding: 15px;
-            }
-        }
-
-        @media (max-width: 700px) {
-            .header {
-                padding: 14px 16px;
-            }
-
-            .layout {
-                grid-template-columns: 1fr;
-            }
-
-            .sidebar {
-                padding: 10px;
-                border-right: none;
-                border-bottom: 1px solid var(--border);
-                display: flex;
-                overflow-x: auto;
-                gap: 5px;
-            }
-
-            .sidebar-label {
-                display: none;
-            }
-
-            .nav-item {
-                width: auto;
-                flex-shrink: 0;
-                margin: 0;
-            }
-
-            .main {
-                padding: 18px 13px;
-            }
-
-            .welcome {
-                align-items: flex-start;
-                flex-direction: column;
-            }
-
-            .summary {
-                grid-template-columns: 1fr;
-            }
-
-            .toolbar {
-                align-items: stretch;
-            }
-
-            .search-box {
-                max-width: none;
-            }
-
-            .actions .btn {
-                flex: 1;
-            }
-        }
-    </style>
+    <link rel="stylesheet" href="/static/style.css">
 </head>
 
 <body>
@@ -499,6 +37,7 @@
         <main class="main">
             <section class="welcome">
                 <h2>Shared Workspace</h2>
+                <p>File details are saved to the database. Uploaded file contents stay in this browser session.</p>
             </section>
 
             <section class="toolbar">
@@ -599,6 +138,19 @@
         </div>
     </div>
 
+    <div class="modal-overlay" id="preview-overlay">
+        <section class="preview-modal" role="dialog" aria-modal="true"
+                 aria-labelledby="preview-title">
+            <div class="preview-heading">
+                <h3 id="preview-title">File preview</h3>
+                <button type="button" class="btn" id="close-preview-button">
+                    Close
+                </button>
+            </div>
+            <div class="preview-content" id="preview-content"></div>
+        </section>
+    </div>
+
     <script>
         const fileList = document.getElementById("file-list");
         const searchInput = document.getElementById("search-input");
@@ -606,15 +158,63 @@
         const emptyState = document.getElementById("empty-state");
         const modalOverlay = document.getElementById("modal-overlay");
         const itemNameInput = document.getElementById("item-name");
+        const previewOverlay = document.getElementById("preview-overlay");
+        const previewContent = document.getElementById("preview-content");
+        const previewTitle = document.getElementById("preview-title");
 
         let items = [];
         let selectedIds = new Set();
         let currentFilter = "all";
         let modalType = "file";
+        let previewObjectURL = null;
 
-        // Display a friendly name if supplied by the login workflow.
         const currentUsername = sessionStorage.getItem("username") || "User";
         document.getElementById("username").textContent = currentUsername;
+
+        function mapWorkspaceItem(item, file = null) {
+            return {
+                id: String(item.id),
+                name: item.name,
+                kind: item.kind,
+                type: item.type,
+                size: Number(item.size),
+                modified: new Date(item.modified),
+                file
+            };
+        }
+
+        async function requestJSON(path, options = {}) {
+            const response = await fetch(path, {
+                ...options,
+                headers: {
+                    "Content-Type": "application/json",
+                    ...options.headers
+                },
+                credentials: "same-origin"
+            });
+
+            const text = await response.text();
+            const data = text ? JSON.parse(text) : null;
+            if (!response.ok) {
+                const detail = data && data.detail;
+                throw new Error(detail || `Request failed (HTTP ${response.status}).`);
+            }
+            return data;
+        }
+
+        async function loadWorkspaceItems() {
+            try {
+                const storedItems = await requestJSON("/api/workspace/files");
+                items = storedItems.map(item => mapWorkspaceItem(item));
+                render();
+            } catch (error) {
+                if (error.message === "Please log in.") {
+                    window.location.href = "/login-page";
+                    return;
+                }
+                alert(`Could not load workspace items: ${error.message}`);
+            }
+        }
 
         function formatSize(bytes) {
             if (!bytes) return "0 B";
@@ -676,7 +276,12 @@
                         <div class="file-name">
                             <input type="checkbox" class="item-checkbox"
                                    data-id="${item.id}" ${checked ? "checked" : ""}>
-                            <span>${escapeHTML(item.name)}</span>
+                            ${
+                                item.kind === "folder"
+                                    ? `<span>${escapeHTML(item.name)}</span>`
+                                    : `<button type="button" class="file-open-button"
+                                               data-open-id="${escapeHTML(item.id)}">${escapeHTML(item.name)}</button>`
+                            }
                         </div>
                     </td>
                     <td class="file-type">${item.kind === "folder" ? "Folder" : escapeHTML(item.type)}</td>
@@ -706,11 +311,96 @@
                 visible.length > 0 && visible.every(item => selectedIds.has(item.id));
         }
 
+        function closeFilePreview() {
+            previewOverlay.classList.remove("show");
+            previewContent.replaceChildren();
+            if (previewObjectURL) {
+                URL.revokeObjectURL(previewObjectURL);
+                previewObjectURL = null;
+            }
+        }
+
+        async function openWorkspaceFile(item) {
+            if (item.kind !== "file") return;
+
+            let file = item.file;
+            if (!file && item.size === 0 &&
+                (item.type === "text/plain" || /\.txt$/i.test(item.name))) {
+                file = new File([""], item.name, { type: "text/plain" });
+            }
+            if (!file) {
+                alert("This file's contents are not available in this browser session.");
+                return;
+            }
+
+            previewTitle.textContent = item.name;
+            previewContent.replaceChildren();
+            previewOverlay.classList.add("show");
+
+            const type = file.type || item.type || "";
+            if (type.startsWith("text/") ||
+                type === "application/json" ||
+                type === "application/xml" ||
+                /\.txt$/i.test(item.name)) {
+                const text = document.createElement("pre");
+                text.className = "text-preview";
+                text.textContent = await file.text();
+                previewContent.appendChild(text);
+                return;
+            }
+
+            previewObjectURL = URL.createObjectURL(file);
+            if (type.startsWith("image/")) {
+                const image = document.createElement("img");
+                image.className = "image-preview";
+                image.src = previewObjectURL;
+                image.alt = item.name;
+                previewContent.appendChild(image);
+            } else if (type === "application/pdf") {
+                const frame = document.createElement("iframe");
+                frame.className = "document-preview";
+                frame.title = item.name;
+                frame.src = previewObjectURL;
+                frame.setAttribute("sandbox", "");
+                previewContent.appendChild(frame);
+            } else if (type.startsWith("audio/") || type.startsWith("video/")) {
+                const media = document.createElement(
+                    type.startsWith("audio/") ? "audio" : "video"
+                );
+                media.className = "media-preview";
+                media.src = previewObjectURL;
+                media.controls = true;
+                previewContent.appendChild(media);
+            } else {
+                const message = document.createElement("p");
+                message.textContent = "Preview is not supported for this file type.";
+                const openLink = document.createElement("a");
+                openLink.href = previewObjectURL;
+                openLink.target = "_blank";
+                openLink.rel = "noopener";
+                openLink.textContent = "Open in a new tab";
+                previewContent.append(message, openLink);
+            }
+        }
+
+        fileList.addEventListener("click", event => {
+            const openButton = event.target.closest(".file-open-button");
+            if (!openButton) return;
+
+            const item = items.find(candidate => candidate.id === openButton.dataset.openId);
+            if (item) {
+                openWorkspaceFile(item).catch(error => {
+                    closeFilePreview();
+                    alert(`Could not open file: ${error.message}`);
+                });
+            }
+        });
+
         fileList.addEventListener("change", event => {
             const checkbox = event.target.closest(".item-checkbox");
             if (!checkbox) return;
 
-            const id = Number(checkbox.dataset.id);
+            const id = checkbox.dataset.id;
 
             if (checkbox.checked) selectedIds.add(id);
             else selectedIds.delete(id);
@@ -780,68 +470,67 @@
         });
 
         document.getElementById("cancel-button").addEventListener("click", closeModal);
+        document.getElementById("close-preview-button").addEventListener(
+            "click",
+            closeFilePreview
+        );
 
         modalOverlay.addEventListener("click", event => {
             if (event.target === modalOverlay) closeModal();
         });
 
-        document.getElementById("create-form").addEventListener("submit", event => {
+        previewOverlay.addEventListener("click", event => {
+            if (event.target === previewOverlay) closeFilePreview();
+        });
+
+        document.addEventListener("keydown", event => {
+            if (event.key === "Escape" && previewOverlay.classList.contains("show")) {
+                closeFilePreview();
+            }
+        });
+
+        document.getElementById("create-form").addEventListener("submit", async event => {
             event.preventDefault();
 
             const name = itemNameInput.value.trim();
             if (!name) return;
 
-            if (items.some(item => item.name.toLowerCase() === name.toLowerCase())) {
-                alert("An item with this name already exists.");
-                return;
+            try {
+                const saved = await requestJSON("/api/workspace/items", {
+                    method: "POST",
+                    body: JSON.stringify({ name, kind: modalType })
+                });
+                items.unshift(mapWorkspaceItem(saved));
+                selectedIds.clear();
+                closeModal();
+                render();
+            } catch (error) {
+                alert(`Could not create item: ${error.message}`);
             }
-
-            const item = {
-                id: Date.now() + Math.floor(Math.random() * 1000),
-                name: modalType === "file" && !name.includes(".")
-                    ? name + ".txt"
-                    : name,
-                kind: modalType,
-                type: modalType === "folder" ? "Folder" : "Text file",
-                size: 0,
-                modified: new Date(),
-                file: null
-            };
-
-            items.unshift(item);
-            selectedIds.clear();
-            closeModal();
-            render();
-
-            // A newly created text file can be downloaded as a blank file.
         });
 
         document.getElementById("upload-button").addEventListener("click", () => {
             uploadInput.click();
         });
 
-        uploadInput.addEventListener("change", event => {
+        uploadInput.addEventListener("change", async event => {
             const files = Array.from(event.target.files);
 
-            files.forEach(file => {
-                const duplicate = items.some(item =>
-                    item.kind === "file" &&
-                    item.name.toLowerCase() === file.name.toLowerCase()
-                );
-
-                if (duplicate) return;
-
-                items.unshift({
-                    id: Date.now() + Math.floor(Math.random() * 100000),
-                    name: file.name,
-                    kind: "file",
-                    type: file.type || "File",
-                    size: file.size,
-                    modified: new Date(),
-                    file: file
-                });
-            });
-
+            for (const file of files) {
+                try {
+                    const saved = await requestJSON("/api/workspace/uploads", {
+                        method: "POST",
+                        body: JSON.stringify({
+                            name: file.name,
+                            size: file.size,
+                            mime_type: file.type || null
+                        })
+                    });
+                    items.unshift(mapWorkspaceItem(saved, file));
+                } catch (error) {
+                    alert(`Could not save ${file.name}: ${error.message}`);
+                }
+            }
             render();
             uploadInput.value = "";
         });
@@ -861,13 +550,18 @@
                 return;
             }
 
-            downloadable.forEach(item => {
+            for (const item of downloadable) {
                 let blob;
 
                 if (item.file) {
                     blob = item.file;
-                } else {
+                } else if (item.size === 0) {
                     blob = new Blob([""], { type: "text/plain" });
+                } else {
+                    alert(
+                        `${item.name} is saved as metadata only. Its contents are not stored on the server.`
+                    );
+                    continue;
                 }
 
                 const url = URL.createObjectURL(blob);
@@ -878,15 +572,21 @@
                 link.click();
                 link.remove();
                 setTimeout(() => URL.revokeObjectURL(url), 1000);
-            });
+            }
         });
 
-        document.getElementById("logout-button").addEventListener("click", () => {
+        document.getElementById("logout-button").addEventListener("click", async () => {
+            try {
+                await requestJSON("/api/workspace/session", { method: "DELETE" });
+            } catch (error) {
+                alert(`Could not log out: ${error.message}`);
+                return;
+            }
             sessionStorage.removeItem("username");
             window.location.href = "/login-page";
         });
 
-        render();
+        loadWorkspaceItems();
     </script>
 </body>
 </html>

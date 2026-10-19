@@ -1,0 +1,1 @@
+A Computer Network is a collection of interconnected devices that communicate and share resources. Network protocols define how data is transmitted between devices. Important concepts include IP addressing, routing, DNS, DHCP, and the TCP/IP model. Networks enable services such as web browsing, email, and file sharing.

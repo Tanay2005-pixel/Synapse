@@ -1,0 +1,12 @@
+# Backend
+fastapi>=0.115
+uvicorn[standard]>=0.30
+pydantic[email]>=2.7
+jinja2>=3.1
+python-multipart>=0.0.9
+
+# Only needed with SYNAPSE_STORAGE=postgres
+psycopg[binary]>=3.1
+
+# The semantic-search module (embeddings/) is maintained separately and
+# lists its own dependencies; it is not part of this backend yet.

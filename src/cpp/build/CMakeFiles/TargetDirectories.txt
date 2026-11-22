@@ -1,0 +1,3 @@
+/mnt/c/studies/libraries/PROJECTS/Synapse/src/cpp/build/CMakeFiles/synapse_engine.dir
+/mnt/c/studies/libraries/PROJECTS/Synapse/src/cpp/build/CMakeFiles/edit_cache.dir
+/mnt/c/studies/libraries/PROJECTS/Synapse/src/cpp/build/CMakeFiles/rebuild_cache.dir

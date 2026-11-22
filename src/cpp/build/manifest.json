@@ -1,0 +1,39 @@
+{
+  "status": "success",
+  "filename": "SIH2026-IDEA-Presentation-Format.pptx.pdf",
+  "total_size": 11589197,
+  "chunk_size": 2000000,
+  "total_chunks": 6,
+  "chunks": [
+    {
+      "index": 0,
+      "hash": "df691139141d35a62e239833c43f1fb6b3f2e5afd12bc3988518c4a8a899ca05",
+      "size": 2000000
+    },
+    {
+      "index": 1,
+      "hash": "114b4c17789aea78da66c640b2a1654d4d2d8d39405a4ebdd39f0c068f361094",
+      "size": 2000000
+    },
+    {
+      "index": 2,
+      "hash": "c85d889c1dc480df48cfbf995846ec0f4cb053e5b197c7fc809ff54ad94521b9",
+      "size": 2000000
+    },
+    {
+      "index": 3,
+      "hash": "76052f527065c01731140ca5a0f364f77306c2eb37a8870c64d40d89f0506d58",
+      "size": 2000000
+    },
+    {
+      "index": 4,
+      "hash": "c6ccf6ac1943d1f8eeef51a02f5fc877bde0f433bb434b4a31618aab6ae8896b",
+      "size": 2000000
+    },
+    {
+      "index": 5,
+      "hash": "ec548b21c70588542fee522804a6f9f22e059bb0ab2ef686b636fc565a2c02b3",
+      "size": 1589197
+    }
+  ]
+}

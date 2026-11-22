@@ -139,7 +139,94 @@ pip install -r requirements.txt
 
 If it does not, install the dependencies specified by the project configuration before starting the application.
 
-### Step 4: Configure PostgreSQL
+### Development mode: JSON storage (default)
+
+For how the backend works (which endpoint and function handles each action: upload, download, open, Save to Synapse and so on), see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). For the test report, see [docs/TESTING.md](docs/TESTING.md).
+
+During development Synapse stores its data in JSON files instead of PostgreSQL. No database is needed.
+
+| Setting (env var) | Default | Meaning |
+|---|---|---|
+| `SYNAPSE_STORAGE` | `json` | `json` or `postgres` |
+| `SYNAPSE_DATA_DIR` | `data/` | JSON tables (`users`, `files`, `file_chunks`, `permissions`, `activity_logs`), `embeddings.json` search index, temp files |
+| `SYNAPSE_STORAGE_DIR` | `storage/` | Content-addressed chunk store written by the C++ engine (`storage/<2 hex>/<sha256>`) |
+| `SYNAPSE_ENGINE` | `src/cpp/build/synapse_engine` | Path to the C++ engine binary |
+| `SYNAPSE_ENGINE_MODE` | `wsl` on Windows, `native` elsewhere | On Windows the Linux binary is run through `wsl.exe` |
+| `SYNAPSE_CHUNK_SIZE` | engine default (1 MiB) | Chunk size in bytes |
+
+The JSON tables use the same columns as `database/schema.sql`. The `data/` and `storage/` folders are git-ignored.
+
+**C++ engine on Windows:** build it inside WSL (`cd src/cpp/build && cmake .. && make`). The backend calls it with `wsl.exe -e`. The first call after WSL has been idle takes several seconds while WSL starts. Downloads pass every chunk hash on one command line, which Windows caps at about 460 chunks per file (about 460 MB at 1 MiB per chunk). For larger files, raise `SYNAPSE_CHUNK_SIZE`.
+
+**C++ file lock manager (`synapse_lock`):** an exclusive per-file lock used while a user edits a file on their computer. Source: `src/cpp/include/lock_manager.hpp`, `src/cpp/src/lock_manager.cpp`, `src/cpp/src/lock_main.cpp`.
+
+- Build inside WSL with `sh src/cpp/build_lock.sh` (needs only `g++`), or with the `synapse_lock` CMake target. The binary goes to `src/cpp/build/synapse_lock`.
+- Commands: `acquire <dir> <file_id> <user_id> <session_id> <lease_s> <abandon_s>`, `heartbeat <dir> <file_id> <user_id> <session_id> <lease_s>`, `release <dir> <file_id> <user_id> <session_id>`, `status <dir> <file_id>`. Each prints JSON. Exit codes: 0 ok, 1 error, 2 held by another user, 3 not the owner, 4 not locked.
+- Mechanism: an exclusive `flock(2)` on `<file_id>.guard` serialises every decision, and the lock record `<file_id>.lock` is written to a temp file and renamed into place. The kernel drops the flock if a process dies. An unreadable record is treated as locked, never as free.
+- Leases: a lock is *active* while heartbeats keep the lease fresh. Once the lease lapses it becomes *idle* but stays held. Only after `abandon_s` with no heartbeat can another user reclaim it, and the old session can then no longer save or release.
+- Tests (inside WSL): `sh src/cpp/tests/test_lock.sh [/mnt/c/... or /tmp]`
+
+**Locking API (FastAPI → `synapse_lock`):** every lock decision is made by the C++ binary. FastAPI keeps only session metadata in `data/edit_sessions.json`; lock records live in `data/locks/`.
+
+| Endpoint | Purpose |
+|---|---|
+| `POST /api/workspace/files/{id}/open` | Needs write access. Acquires the exclusive lock and starts an editing session (or resumes your own). 409 if another user holds it. |
+| `GET /api/workspace/files/{id}/lock` | Lock status: owner, state (active / idle / abandoned), times. |
+| `GET /api/workspace/sessions` | Your active editing sessions. |
+| `POST /api/workspace/sessions/heartbeat` | Renews all your locks. The dashboard calls it every minute. |
+| `GET /api/workspace/sessions/{sid}/working-copy` | Downloads the working copy in its original format, to open in Word, Excel, a PDF reader and so on. The server file is not changed. |
+| `POST /api/workspace/sessions/{sid}/save` | **Save to Synapse.** Multipart form with `file_id` and `file`. Checks the session, the C++ lock owner, write access and the file type. The upload is split into new chunks, then the file switches to the new version in one atomic write, and the lock is released. If anything fails, the original is unchanged and the lock is kept so you can retry. |
+| `POST /api/workspace/sessions/{sid}/discard` | **Discard Changes.** Needs `{"confirm": true}`. The server file is untouched and the lock is released. |
+| `POST /api/workspace/sessions/{sid}/release` | Releases without saving. Needs `{"confirm_unsaved": true}`, otherwise 409 with the unsaved-changes warning. |
+| `POST/DELETE /api/workspace/files/{id}/share` | Owner shares a file with a username (`read` or `write`) or removes sharing. |
+
+The server enforces these rules:
+- With no access at all you get 404. With read-only access, opening returns 403.
+- While another user holds the lock, a direct download returns 409.
+- Only the lock owner's own session can save or release.
+- If the lock manager can't be reached, access is denied (500) rather than allowed.
+
+Lease settings: `SYNAPSE_LOCK_LEASE` (default 300 s) and `SYNAPSE_LOCK_ABANDON` (default 8 h).
+
+**Dashboard (`/workspace-page`):**
+- The sidebar has My Files, Recent Files (last 7 days), Starred, Shared With Me and Trash.
+- Each file shows its type, size, owner, modified time and lock status.
+- Row actions: Open, Download, Save to Synapse, Discard Changes, Release Lock, Share, Star, Trash/Restore.
+- An *Editing on your computer* panel lists your open working copies. The page sends a lock heartbeat every minute and warns before you leave or log out with unsaved work.
+- Clicking a file name shows a read-only preview for PDF, image, text and media files. There is no in-browser editor.
+- **Create File** makes `.docx`, `.xlsx`, `.pptx` (valid blank documents from `src/py/office_templates.py`) and `.txt`, `.md`, `.csv`, `.json` (empty). To re-check the Office templates on a Windows machine with Microsoft Office, run `tests/verify_office_templates.ps1`.
+
+**Versions:** each successful Save to Synapse creates a new file version (`files.json` → `version`). The chunks of earlier versions are kept, because chunks are never modified. They aren't shown in the UI yet.
+
+**What a browser can and cannot do:** Synapse can't launch Word or Excel, and it can't detect when you press Save inside them. Open downloads a working copy, and your browser's download bar opens it in the default app. After editing, you choose **Save to Synapse** and select the edited file. Saving inside the desktop app only changes the copy on your computer.
+
+**Workers:** the C++ locks and JSON writes are both safe across processes (JSON writes take an OS file lock on `data/.store.lock`). Login sessions are still kept in memory, though, so run a **single worker** until those are persisted:
+
+```bash
+uvicorn src.py.user_login:app --reload --host 0.0.0.0 --port 8000
+```
+
+Login and registration still send OTPs by email, so `SMTP_USER` and `SMTP_PASSWORD` must be set.
+
+**Keyword search:** `GET /api/workspace/search?q=` searches file metadata only. Every word must match the file name (partial or complete), extension, file type or owner. Exact name matches rank first, then names that start with the query, then partial matches.
+
+#### Search integration point (semantic search, teammate module)
+
+Semantic search is developed separately in `embeddings/` and is not wired into the backend. To connect it later without rebuilding the search UI:
+
+1. Expose an endpoint, e.g. `GET /api/semantic/search?q=`, that checks the session cookie and returns the same JSON item shape as `GET /api/workspace/files`, best match first. Extra fields such as `score` and `snippet` are allowed.
+2. In `template/workspace.html`, register it with the built-in provider hook:
+
+```js
+SynapseSearch.register("semantic", q =>
+    fetch(`/api/semantic/search?q=${encodeURIComponent(q)}`, { credentials: "same-origin" })
+        .then(r => r.json()));
+SynapseSearch.use("semantic");   // SynapseSearch.use("keyword") switches back
+```
+
+Tests: `python -m unittest discover -s tests -v`
+
+### Step 4: Configure PostgreSQL (only for `SYNAPSE_STORAGE=postgres`)
 
 1. Install and start PostgreSQL.
 2. Create the project database.

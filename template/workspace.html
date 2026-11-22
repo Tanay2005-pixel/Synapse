@@ -1,84 +1,74 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Synapse | Shared Workspace</title>
-
-    <link rel="stylesheet" href="/static/style.css">
+    <title>Synapse | Workspace</title>
+    <!-- ?v= forces browsers to fetch the new stylesheet after an update -->
+    <link rel="stylesheet" href="/static/style.css?v=8">
 </head>
 
 <body>
     <div class="top-strip"></div>
 
     <header class="header">
-        <h1>SYNAPSE</h1>
+        <h1 class="brand">SYNAPSE</h1>
+
+        <div class="search-box header-search">
+            <input type="search" id="search-input"
+                   placeholder="Search by name, extension, type or owner..."
+                   aria-label="Search files">
+        </div>
 
         <div class="user-area">
+            <span class="avatar" id="avatar" aria-hidden="true">?</span>
             <span class="user-info" id="username">User</span>
             <button class="logout-btn" id="logout-button">Log out</button>
         </div>
     </header>
 
     <div class="layout">
-        <aside class="sidebar">
+        <aside class="sidebar" aria-label="Views">
             <p class="sidebar-label">WORKSPACE</p>
-
-            <button class="nav-item active" data-filter="all">All Files</button>
-
-            <button class="nav-item" data-filter="folder">Folders</button>
-
-            <button class="nav-item" data-filter="file">Files</button>
-
-            <button class="nav-item" data-filter="recent">Recent</button>
+            <button class="nav-item active" data-view="mine">My Files</button>
+            <button class="nav-item" data-view="recent">Recent Files</button>
+            <button class="nav-item" data-view="starred">Starred</button>
+            <button class="nav-item" data-view="shared">Shared With Me</button>
+            <button class="nav-item" data-view="trash">Trash</button>
         </aside>
 
         <main class="main">
-            <section class="welcome">
-                <h2>Shared Workspace</h2>
-                <p>File details are saved to the database. Uploaded file contents stay in this browser session.</p>
-            </section>
-
-            <section class="toolbar">
-                <div class="search-box">
-                    <input
-                        type="search"
-                        id="search-input"
-                        placeholder="Search files and folders..."
-                        aria-label="Search files and folders"
-                    >
+            <section class="view-heading">
+                <div>
+                    <h2 id="list-title">My Files</h2>
+                    <p id="view-hint" class="muted">Files you own. Open a file to edit it in its desktop app.</p>
                 </div>
-
                 <div class="actions">
+                    <button class="btn" id="create-folder-button">New Folder</button>
                     <button class="btn" id="create-file-button">Create File</button>
-                    <button class="btn" id="create-folder-button">Create Folder</button>
-                    <button class="btn" id="upload-button">Upload</button>
-                    <button class="btn btn-primary" id="download-button">Download</button>
+                    <button class="btn btn-primary" id="upload-button">Upload</button>
                     <input type="file" id="upload-input" multiple>
                 </div>
             </section>
 
-            <section class="summary">
-                <div class="summary-card">
-                    <h3 id="total-files">0</h3>
-                    <p>Total files</p>
+            <!-- Files the user is editing on their own computer -->
+            <section class="sessions-card" id="sessions-card" hidden>
+                <div class="sessions-heading">
+                    <h3>Editing on your computer</h3>
+                    <span class="lock-chip mine" id="sessions-count">0</span>
                 </div>
-
-                <div class="summary-card">
-                    <h3 id="total-folders">0</h3>
-                    <p>Total folders</p>
-                </div>
-
-                <div class="summary-card">
-                    <h3 id="total-size">0 B</h3>
-                    <p>Visible file size</p>
-                </div>
+                <p class="sessions-note">
+                    These files are locked for you. <strong>Saving in Word, Excel or another
+                    desktop app only changes the copy on your computer.</strong> When you are
+                    done, click <strong>Save to Synapse</strong> and choose the edited file, or
+                    discard your changes to release the lock.
+                </p>
+                <ul class="session-list" id="session-list"></ul>
             </section>
 
             <section class="files-card">
                 <div class="files-heading">
-                    <h3 id="list-title">All Files</h3>
+                    <h3 id="table-title">Files</h3>
                     <span id="visible-count">0 items</span>
                 </div>
 
@@ -86,15 +76,13 @@
                     <table>
                         <thead>
                             <tr>
-                                <th>
-                                    <input type="checkbox" id="select-all"
-                                           aria-label="Select all visible items">
-                                    &nbsp; NAME
-                                </th>
+                                <th>NAME</th>
                                 <th>TYPE</th>
                                 <th>SIZE</th>
-                                <th>LAST MODIFIED</th>
-                                <th>ACCESS</th>
+                                <th>OWNER</th>
+                                <th>MODIFIED</th>
+                                <th>LOCK</th>
+                                <th class="actions-col">ACTIONS</th>
                             </tr>
                         </thead>
                         <tbody id="file-list"></tbody>
@@ -102,491 +90,850 @@
                 </div>
 
                 <div class="empty-state" id="empty-state">
-                    <strong>No files or folders yet</strong>
-                    Upload a file or create a folder to get started.
+                    <strong id="empty-title">No files yet</strong>
+                    <span id="empty-text">Upload a file or create one to get started.</span>
                 </div>
             </section>
-
         </main>
     </div>
 
-    <!-- Create file/folder dialog -->
-    <div class="modal-overlay" id="modal-overlay">
-        <div class="modal">
-            <h3 id="modal-title">Create File</h3>
-            <p id="modal-description">Enter a name for your new item.</p>
-
-            <form id="create-form">
-                <label for="item-name">Name</label>
-                <input
-                    id="item-name"
-                    type="text"
-                    placeholder="Enter name"
-                    maxlength="120"
-                    required
-                >
-
-                <div class="modal-actions">
-                    <button type="button" class="btn" id="cancel-button">
-                        Cancel
-                    </button>
-                    <button type="submit" class="btn btn-primary" id="confirm-button">
-                        Create
-                    </button>
-                </div>
-            </form>
-        </div>
+    <!-- Generic dialog (confirmations, create, share) -->
+    <div class="modal-overlay" id="dialog-overlay">
+        <section class="modal" role="dialog" aria-modal="true" aria-labelledby="dialog-title">
+            <h3 id="dialog-title">Dialog</h3>
+            <div id="dialog-body"></div>
+            <div class="modal-actions">
+                <button type="button" class="btn" id="dialog-cancel">Cancel</button>
+                <button type="button" class="btn btn-primary" id="dialog-confirm">OK</button>
+            </div>
+        </section>
     </div>
 
+    <!-- Read-only preview (no in-browser editing) -->
     <div class="modal-overlay" id="preview-overlay">
-        <section class="preview-modal" role="dialog" aria-modal="true"
-                 aria-labelledby="preview-title">
+        <section class="preview-modal" role="dialog" aria-modal="true" aria-labelledby="preview-title">
             <div class="preview-heading">
                 <h3 id="preview-title">File preview</h3>
-                <button type="button" class="btn" id="close-preview-button">
-                    Close
-                </button>
+                <span class="muted">Read-only preview — use Open to edit in a desktop app</span>
+                <button type="button" class="btn" id="close-preview-button">Close</button>
             </div>
             <div class="preview-content" id="preview-content"></div>
         </section>
     </div>
 
-    <script>
-        const fileList = document.getElementById("file-list");
-        const searchInput = document.getElementById("search-input");
-        const uploadInput = document.getElementById("upload-input");
-        const emptyState = document.getElementById("empty-state");
-        const modalOverlay = document.getElementById("modal-overlay");
-        const itemNameInput = document.getElementById("item-name");
-        const previewOverlay = document.getElementById("preview-overlay");
-        const previewContent = document.getElementById("preview-content");
-        const previewTitle = document.getElementById("preview-title");
+    <input type="file" id="save-input" hidden>
+    <div class="toast-area" id="toast-area" aria-live="polite"></div>
 
+    <script>
+    (() => {
+        "use strict";
+
+        /* ==================================================================
+         * State
+         * ================================================================== */
+        const VIEWS = {
+            mine:    { title: "My Files", hint: "Files you own. Open a file to edit it in its desktop app.",
+                       empty: ["No files yet", "Upload a file or create one to get started."] },
+            recent:  { title: "Recent Files", hint: "Files you own or that are shared with you, changed in the last 7 days.",
+                       empty: ["Nothing recent", "Files changed in the last 7 days appear here."] },
+            starred: { title: "Starred", hint: "Files you marked with a star.",
+                       empty: ["No starred files", "Click the star next to a file to find it here quickly."] },
+            shared:  { title: "Shared With Me", hint: "Files other users shared with you.",
+                       empty: ["Nothing shared with you", "Files other users share with you appear here."] },
+            trash:   { title: "Trash", hint: "Files you moved to Trash. Restore them to use them again.",
+                       empty: ["Trash is empty", "Files you move to Trash appear here."] },
+        };
+        const HEARTBEAT_MS = 60_000;   // server lease is 5 minutes
+        const REFRESH_MS = 30_000;     // keep lock status current
+
+        let view = "mine";
         let items = [];
-        let selectedIds = new Set();
-        let currentFilter = "all";
-        let modalType = "file";
+        let sessions = [];            // my active editing sessions
+        let me = null;
         let previewObjectURL = null;
 
-        const currentUsername = sessionStorage.getItem("username") || "User";
-        document.getElementById("username").textContent = currentUsername;
+        const $ = id => document.getElementById(id);
+        const fileList = $("file-list");
+        const searchInput = $("search-input");
 
-        function mapWorkspaceItem(item, file = null) {
-            return {
-                id: String(item.id),
-                name: item.name,
-                kind: item.kind,
-                type: item.type,
-                size: Number(item.size),
-                modified: new Date(item.modified),
-                file
-            };
-        }
-
-        async function requestJSON(path, options = {}) {
+        /* ==================================================================
+         * Helpers
+         * ================================================================== */
+        async function api(path, options = {}) {
+            const isForm = options.body instanceof FormData;
             const response = await fetch(path, {
                 ...options,
-                headers: {
-                    "Content-Type": "application/json",
-                    ...options.headers
-                },
-                credentials: "same-origin"
+                headers: { ...(isForm ? {} : { "Content-Type": "application/json" }), ...options.headers },
+                credentials: "same-origin",
             });
-
             const text = await response.text();
-            const data = text ? JSON.parse(text) : null;
+            let data = null;
+            try { data = text ? JSON.parse(text) : null; } catch (_) { data = null; }
+            if (response.status === 401) {
+                window.location.href = "/login-page";
+                throw new Error("Please log in.");
+            }
             if (!response.ok) {
-                const detail = data && data.detail;
-                throw new Error(detail || `Request failed (HTTP ${response.status}).`);
+                const error = new Error((data && data.detail) || `Request failed (HTTP ${response.status}).`);
+                error.status = response.status;
+                error.data = data;
+                throw error;
             }
             return data;
         }
 
-        async function loadWorkspaceItems() {
-            try {
-                const storedItems = await requestJSON("/api/workspace/files");
-                items = storedItems.map(item => mapWorkspaceItem(item));
-                render();
-            } catch (error) {
-                if (error.message === "Please log in.") {
-                    window.location.href = "/login-page";
-                    return;
-                }
-                alert(`Could not load workspace items: ${error.message}`);
-            }
+        function escapeHTML(value) {
+            return String(value ?? "").replace(/[&<>"']/g, c => ({
+                "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+            })[c]);
         }
 
         function formatSize(bytes) {
             if (!bytes) return "0 B";
             const units = ["B", "KB", "MB", "GB", "TB"];
-            const index = Math.min(
-                Math.floor(Math.log(bytes) / Math.log(1024)),
-                units.length - 1
-            );
-            return (bytes / Math.pow(1024, index)).toFixed(index === 0 ? 0 : 1)
-                + " " + units[index];
+            const i = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+            return (bytes / Math.pow(1024, i)).toFixed(i === 0 ? 0 : 1) + " " + units[i];
         }
 
-        function formatDate(date) {
+        function formatDate(value) {
+            const date = new Date(value);
             return new Intl.DateTimeFormat("en-IN", {
-                day: "2-digit",
-                month: "short",
-                year: "numeric"
+                day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit"
             }).format(date);
         }
 
-        function escapeHTML(value) {
-            return String(value).replace(/[&<>"']/g, char => ({
-                "&": "&amp;",
-                "<": "&lt;",
-                ">": "&gt;",
-                '"': "&quot;",
-                "'": "&#39;"
-            })[char]);
+        function timeAgo(value) {
+            if (!value) return "";
+            const seconds = Math.max(0, (Date.now() - new Date(value).getTime()) / 1000);
+            if (seconds < 60) return "just now";
+            if (seconds < 3600) return `${Math.floor(seconds / 60)} min ago`;
+            if (seconds < 86400) return `${Math.floor(seconds / 3600)} h ago`;
+            return `${Math.floor(seconds / 86400)} d ago`;
         }
 
-        function getVisibleItems() {
-            const query = searchInput.value.trim().toLowerCase();
+        function toast(message, type = "info", ms = 6000) {
+            const el = document.createElement("div");
+            el.className = `toast ${type}`;
+            el.setAttribute("role", type === "error" ? "alert" : "status");
+            el.textContent = message;
+            $("toast-area").appendChild(el);
+            setTimeout(() => el.remove(), ms);
+        }
 
-            return items.filter(item => {
-                const matchesSearch = item.name.toLowerCase().includes(query);
-                const matchesFilter =
-                    currentFilter === "all" ||
-                    (currentFilter === "file" && item.kind === "file") ||
-                    (currentFilter === "folder" && item.kind === "folder") ||
-                    (currentFilter === "recent" &&
-                        Date.now() - item.modified.getTime() < 7 * 86400000);
+        // Category drives the file-type badge; the real format is never changed.
+        function category(item) {
+            if (item.kind === "folder") return "folder";
+            const ext = (item.extension || "").toLowerCase();
+            if (["doc", "docx", "odt", "rtf"].includes(ext)) return "word";
+            if (["xls", "xlsx", "ods", "csv"].includes(ext)) return "sheet";
+            if (["ppt", "pptx", "odp"].includes(ext)) return "slides";
+            if (ext === "pdf") return "pdf";
+            if (["png", "jpg", "jpeg", "gif", "webp", "bmp", "svg"].includes(ext)) return "image";
+            if (["txt", "md", "json", "xml", "log"].includes(ext)) return "text";
+            if (["mp3", "wav", "ogg", "mp4", "webm", "mov"].includes(ext)) return "media";
+            if (["zip", "rar", "7z", "tar", "gz"].includes(ext)) return "archive";
+            return "other";
+        }
 
-                return matchesSearch && matchesFilter;
+        function typeLabel(item) {
+            if (item.kind === "folder") return "Folder";
+            return item.extension ? item.extension.toUpperCase() : "File";
+        }
+
+        function sessionFor(fileId) {
+            return sessions.find(s => s.file_id === String(fileId));
+        }
+
+        function unsavedSessions() {
+            return sessions.filter(s => s.status === "active");
+        }
+
+        /* ==================================================================
+         * Dialogs
+         * ================================================================== */
+        let dialogResolve = null;
+
+        function dialog({ title, html, confirmText = "OK", cancelText = "Cancel", danger = false,
+                          hideConfirm = false, onOpen = null, validate = null }) {
+            $("dialog-title").textContent = title;
+            $("dialog-body").innerHTML = html;
+            const confirm = $("dialog-confirm");
+            confirm.textContent = confirmText;
+            confirm.hidden = hideConfirm;
+            confirm.classList.toggle("btn-danger", danger);
+            $("dialog-cancel").textContent = cancelText;
+            $("dialog-overlay").classList.add("show");
+            if (onOpen) onOpen($("dialog-body"));
+            return new Promise(resolve => {
+                dialogResolve = value => {
+                    if (value && validate && !validate($("dialog-body"))) return;
+                    $("dialog-overlay").classList.remove("show");
+                    dialogResolve = null;
+                    resolve(value ? $("dialog-body") : null);
+                };
             });
+        }
+
+        $("dialog-confirm").addEventListener("click", () => dialogResolve && dialogResolve(true));
+        $("dialog-cancel").addEventListener("click", () => dialogResolve && dialogResolve(false));
+        $("dialog-overlay").addEventListener("click", e => {
+            if (e.target === $("dialog-overlay") && dialogResolve) dialogResolve(false);
+        });
+        document.addEventListener("keydown", e => {
+            if (e.key !== "Escape") return;
+            if (dialogResolve) dialogResolve(false);
+            else if ($("preview-overlay").classList.contains("show")) closePreview();
+        });
+
+        function confirmDialog(title, message, confirmText, danger = false) {
+            return dialog({ title, html: `<p>${escapeHTML(message)}</p>`, confirmText, danger })
+                .then(Boolean);
+        }
+
+        /* ==================================================================
+         * Search providers — integration point
+         *
+         * A provider is an async function (query) => array of items in the same
+         * shape as GET /api/workspace/files, best match first. "keyword"
+         * (traditional metadata search) is built in. The semantic-search module
+         * can plug in later without changing this UI:
+         *     SynapseSearch.register("semantic", q =>
+         *         fetch(`/api/semantic/search?q=${encodeURIComponent(q)}`,
+         *               { credentials: "same-origin" }).then(r => r.json()));
+         *     SynapseSearch.use("semantic");
+         * See README, "Search integration point".
+         * ================================================================== */
+        const searchProviders = {
+            keyword: query => api(`/api/workspace/search?q=${encodeURIComponent(query)}`)
+        };
+        let activeSearchProvider = "keyword";
+        let searchSequence = 0;
+        let searchTimer = null;
+        window.SynapseSearch = {
+            register(name, provider) { searchProviders[name] = provider; },
+            use(name) {
+                if (!searchProviders[name]) throw new Error(`Unknown search provider: ${name}`);
+                activeSearchProvider = name;
+                refresh();
+            },
+            get active() { return activeSearchProvider; }
+        };
+
+        /* ==================================================================
+         * Loading and rendering
+         * ================================================================== */
+        async function refresh() {
+            const query = searchInput.value.trim();
+            const sequence = ++searchSequence;
+            try {
+                const [list, mine] = await Promise.all([
+                    query ? searchProviders[activeSearchProvider](query)
+                          : api(`/api/workspace/files?scope=${view}`),
+                    api("/api/workspace/sessions"),
+                ]);
+                if (sequence !== searchSequence) return;   // a newer request started
+                items = list;
+                sessions = mine;
+                render();
+            } catch (error) {
+                if (sequence !== searchSequence) return;
+                $("table-title").textContent = query ? `Search failed: ${error.message}` : "Could not load files";
+                toast(error.message, "error");
+            }
+        }
+
+        function lockCell(item) {
+            if (item.kind === "folder") return `<span class="muted">—</span>`;
+            const lock = item.lock || {};
+            if (lock.locked === null) return `<span class="lock-chip unknown" title="Lock manager unavailable">Unknown</span>`;
+            if (!lock.locked) return `<span class="lock-chip free">Available</span>`;
+            if (lock.is_mine) return `<span class="lock-chip mine" title="Locked by you since ${escapeHTML(formatDate(lock.acquired_at))}">Editing (you)</span>`;
+            const idle = lock.state === "idle" || lock.state === "abandoned";
+            const title = `Locked by ${lock.owner} since ${formatDate(lock.acquired_at)}` +
+                          (idle ? ` — inactive since ${formatDate(lock.last_heartbeat)}` : "");
+            return `<span class="lock-chip other" title="${escapeHTML(title)}">In use · ${escapeHTML(lock.owner || "another user")}${idle ? " (inactive)" : ""}</span>`;
+        }
+
+        function actionButtons(item) {
+            const b = (action, label, cls = "", disabled = false, title = "") =>
+                `<button type="button" class="small-btn ${cls}" data-action="${action}" data-id="${escapeHTML(item.id)}"
+                         ${disabled ? "disabled" : ""} ${title ? `title="${escapeHTML(title)}"` : ""}>${label}</button>`;
+
+            if (view === "trash" && !searchInput.value.trim()) {
+                return b("restore", "Restore", "primary");
+            }
+            const owner = item.access === "owner";
+            const parts = [];
+            if (item.kind === "file") {
+                const lock = item.lock || {};
+                const lockedByOther = lock.locked && !lock.is_mine;
+                const session = sessionFor(item.id);
+                if (session) {
+                    parts.push(b("save", "Save to Synapse", "primary"));
+                    parts.push(b("discard", "Discard Changes", "danger"));
+                    parts.push(b("release", "Release Lock"));
+                } else {
+                    const canEdit = owner || item.access === "write";
+                    parts.push(b("open", "Open", "primary", !canEdit || lockedByOther || lock.locked === null,
+                        !canEdit ? "You have read-only access" :
+                        lockedByOther ? "This file is currently being used by another user." :
+                        "Lock the file and download a working copy to edit on your computer"));
+                    parts.push(b("download", "Download", "", lockedByOther,
+                        lockedByOther ? "This file is currently being used by another user." : "Download a copy"));
+                }
+                if (owner && !session) parts.push(b("share", "Share"));
+            }
+            if (owner && !sessionFor(item.id)) parts.push(b("trash", "Trash", "subtle"));
+            return parts.join("");
         }
 
         function render() {
-            const visible = getVisibleItems();
+            const query = searchInput.value.trim();
+            const meta = VIEWS[view];
+            $("list-title").textContent = query ? `Results for "${query}"` : meta.title;
+            $("view-hint").textContent = query
+                ? "Keyword search across your files and files shared with you."
+                : meta.hint;
+            $("table-title").textContent = query ? "Search results" : (view === "trash" ? "In Trash" : "Files");
 
             fileList.innerHTML = "";
-            emptyState.style.display = visible.length ? "none" : "block";
-
-            visible.forEach(item => {
+            for (const item of items) {
+                const session = sessionFor(item.id);
+                const cat = category(item);
                 const row = document.createElement("tr");
-                const checked = selectedIds.has(item.id);
-
+                if (session) row.classList.add("editing-row");
                 row.innerHTML = `
                     <td>
                         <div class="file-name">
-                            <input type="checkbox" class="item-checkbox"
-                                   data-id="${item.id}" ${checked ? "checked" : ""}>
-                            ${
-                                item.kind === "folder"
-                                    ? `<span>${escapeHTML(item.name)}</span>`
-                                    : `<button type="button" class="file-open-button"
-                                               data-open-id="${escapeHTML(item.id)}">${escapeHTML(item.name)}</button>`
-                            }
+                            <button type="button" class="star-btn ${item.starred ? "on" : ""}" data-action="star"
+                                    data-id="${escapeHTML(item.id)}" aria-pressed="${item.starred}"
+                                    aria-label="${item.starred ? "Unstar" : "Star"} ${escapeHTML(item.name)}"
+                                    ${view === "trash" ? "hidden" : ""}>${item.starred ? "★" : "☆"}</button>
+                            <span class="type-icon ${cat}" aria-hidden="true">${escapeHTML(cat === "folder" ? "DIR" : (item.extension || "?").slice(0, 4).toUpperCase())}</span>
+                            <div class="name-stack">
+                                ${item.kind === "file" && view !== "trash"
+                                    ? `<button type="button" class="file-open-button" data-action="preview" data-id="${escapeHTML(item.id)}"
+                                               title="Preview (read-only)">${escapeHTML(item.name)}</button>`
+                                    : `<span>${escapeHTML(item.name)}</span>`}
+                                <span class="copy-badges">
+                                    ${item.kind === "file" ? `<span class="badge server" title="The original is stored on the Synapse server">On server · v${item.version}</span>` : ""}
+                                    ${session ? `<span class="badge working" title="You downloaded a working copy to edit">Working copy on your computer</span>` : ""}
+                                    ${item.access === "read" ? `<span class="badge">Read-only</span>` : ""}
+                                </span>
+                            </div>
                         </div>
                     </td>
-                    <td class="file-type">${item.kind === "folder" ? "Folder" : escapeHTML(item.type)}</td>
+                    <td class="file-type">${escapeHTML(typeLabel(item))}</td>
                     <td>${item.kind === "folder" ? "—" : formatSize(item.size)}</td>
+                    <td>${item.access === "owner" ? "You" : escapeHTML(item.owner)}</td>
                     <td>${formatDate(item.modified)}</td>
-                    <td><span class="shared-badge">Workspace</span></td>
-                `;
-
+                    <td>${lockCell(item)}</td>
+                    <td class="row-actions">${actionButtons(item)}</td>`;
                 fileList.appendChild(row);
-            });
+            }
 
-            document.getElementById("visible-count").textContent =
-                `${visible.length} item${visible.length === 1 ? "" : "s"}`;
+            $("visible-count").textContent = `${items.length} item${items.length === 1 ? "" : "s"}`;
+            const empty = !items.length;
+            $("empty-state").style.display = empty ? "block" : "none";
+            $("empty-title").textContent = query ? "No matching files" : meta.empty[0];
+            $("empty-text").textContent = query ? "Try part of a file name, an extension like pdf, or an owner." : meta.empty[1];
 
-            document.getElementById("total-files").textContent =
-                items.filter(item => item.kind === "file").length;
-
-            document.getElementById("total-folders").textContent =
-                items.filter(item => item.kind === "folder").length;
-
-            document.getElementById("total-size").textContent =
-                formatSize(items.reduce(
-                    (sum, item) => sum + (item.kind === "file" ? item.size : 0), 0
-                ));
-
-            document.getElementById("select-all").checked =
-                visible.length > 0 && visible.every(item => selectedIds.has(item.id));
+            renderSessions();
         }
 
-        function closeFilePreview() {
-            previewOverlay.classList.remove("show");
-            previewContent.replaceChildren();
-            if (previewObjectURL) {
-                URL.revokeObjectURL(previewObjectURL);
-                previewObjectURL = null;
-            }
-        }
-
-        async function openWorkspaceFile(item) {
-            if (item.kind !== "file") return;
-
-            let file = item.file;
-            if (!file && item.size === 0 &&
-                (item.type === "text/plain" || /\.txt$/i.test(item.name))) {
-                file = new File([""], item.name, { type: "text/plain" });
-            }
-            if (!file) {
-                alert("This file's contents are not available in this browser session.");
-                return;
-            }
-
-            previewTitle.textContent = item.name;
-            previewContent.replaceChildren();
-            previewOverlay.classList.add("show");
-
-            const type = file.type || item.type || "";
-            if (type.startsWith("text/") ||
-                type === "application/json" ||
-                type === "application/xml" ||
-                /\.txt$/i.test(item.name)) {
-                const text = document.createElement("pre");
-                text.className = "text-preview";
-                text.textContent = await file.text();
-                previewContent.appendChild(text);
-                return;
-            }
-
-            previewObjectURL = URL.createObjectURL(file);
-            if (type.startsWith("image/")) {
-                const image = document.createElement("img");
-                image.className = "image-preview";
-                image.src = previewObjectURL;
-                image.alt = item.name;
-                previewContent.appendChild(image);
-            } else if (type === "application/pdf") {
-                const frame = document.createElement("iframe");
-                frame.className = "document-preview";
-                frame.title = item.name;
-                frame.src = previewObjectURL;
-                frame.setAttribute("sandbox", "");
-                previewContent.appendChild(frame);
-            } else if (type.startsWith("audio/") || type.startsWith("video/")) {
-                const media = document.createElement(
-                    type.startsWith("audio/") ? "audio" : "video"
-                );
-                media.className = "media-preview";
-                media.src = previewObjectURL;
-                media.controls = true;
-                previewContent.appendChild(media);
-            } else {
-                const message = document.createElement("p");
-                message.textContent = "Preview is not supported for this file type.";
-                const openLink = document.createElement("a");
-                openLink.href = previewObjectURL;
-                openLink.target = "_blank";
-                openLink.rel = "noopener";
-                openLink.textContent = "Open in a new tab";
-                previewContent.append(message, openLink);
+        function renderSessions() {
+            const active = unsavedSessions();
+            $("sessions-card").hidden = !active.length;
+            $("sessions-count").textContent = active.length;
+            const list = $("session-list");
+            list.innerHTML = "";
+            for (const s of active) {
+                const file = s.file || {};
+                const li = document.createElement("li");
+                li.className = "session-item";
+                li.innerHTML = `
+                    <span class="type-icon ${category(file)}" aria-hidden="true">${escapeHTML((file.extension || "?").slice(0, 4).toUpperCase())}</span>
+                    <div class="session-info">
+                        <strong>${escapeHTML(file.name || "File")}</strong>
+                        <span class="muted">
+                            Opened ${escapeHTML(timeAgo(s.created_at))} ·
+                            ${s.working_copy_downloaded_at ? "working copy downloaded" : "working copy not downloaded yet"} ·
+                            <span class="warn">You have not saved your latest changes to Synapse.</span>
+                        </span>
+                    </div>
+                    <div class="row-actions">
+                        <button type="button" class="small-btn" data-session-action="copy" data-session="${escapeHTML(s.session_id)}">Download working copy</button>
+                        <button type="button" class="small-btn primary" data-session-action="save" data-session="${escapeHTML(s.session_id)}">Save to Synapse</button>
+                        <button type="button" class="small-btn danger" data-session-action="discard" data-session="${escapeHTML(s.session_id)}">Discard Changes</button>
+                    </div>`;
+                list.appendChild(li);
             }
         }
 
-        fileList.addEventListener("click", event => {
-            const openButton = event.target.closest(".file-open-button");
-            if (!openButton) return;
-
-            const item = items.find(candidate => candidate.id === openButton.dataset.openId);
-            if (item) {
-                openWorkspaceFile(item).catch(error => {
-                    closeFilePreview();
-                    alert(`Could not open file: ${error.message}`);
-                });
+        /* ==================================================================
+         * Desktop editing: Open, working copy, Save to Synapse, Discard
+         * ================================================================== */
+        async function downloadFrom(url, filename) {
+            // fetch + blob so server errors (e.g. 409 locked) are shown, not navigated to.
+            const response = await fetch(url, { credentials: "same-origin" });
+            if (!response.ok) {
+                let detail = `HTTP ${response.status}`;
+                try { detail = (await response.json()).detail || detail; } catch (_) {}
+                throw new Error(detail);
             }
-        });
-
-        fileList.addEventListener("change", event => {
-            const checkbox = event.target.closest(".item-checkbox");
-            if (!checkbox) return;
-
-            const id = checkbox.dataset.id;
-
-            if (checkbox.checked) selectedIds.add(id);
-            else selectedIds.delete(id);
-
-            render();
-        });
-
-        document.getElementById("select-all").addEventListener("change", event => {
-            getVisibleItems().forEach(item => {
-                if (event.target.checked) selectedIds.add(item.id);
-                else selectedIds.delete(item.id);
-            });
-            render();
-        });
-
-        searchInput.addEventListener("input", render);
-
-        document.querySelectorAll(".nav-item").forEach(button => {
-            button.addEventListener("click", () => {
-                document.querySelectorAll(".nav-item").forEach(item =>
-                    item.classList.remove("active")
-                );
-
-                button.classList.add("active");
-                currentFilter = button.dataset.filter;
-
-                const titles = {
-                    all: "All Files",
-                    file: "Files",
-                    folder: "Folders",
-                    recent: "Recent Items"
-                };
-
-                document.getElementById("list-title").textContent =
-                    titles[currentFilter];
-
-                render();
-            });
-        });
-
-        function openModal(type) {
-            modalType = type;
-
-            document.getElementById("modal-title").textContent =
-                type === "folder" ? "Create Folder" : "Create File";
-
-            document.getElementById("modal-description").textContent =
-                type === "folder"
-                    ? "Enter a name for your new folder."
-                    : "Enter a name for your new text file.";
-
-            itemNameInput.value = "";
-            modalOverlay.classList.add("show");
-            itemNameInput.focus();
+            const blob = await response.blob();
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            setTimeout(() => URL.revokeObjectURL(link.href), 2000);
+            return blob;
         }
 
-        function closeModal() {
-            modalOverlay.classList.remove("show");
-        }
-
-        document.getElementById("create-file-button").addEventListener("click", () => {
-            openModal("file");
-        });
-
-        document.getElementById("create-folder-button").addEventListener("click", () => {
-            openModal("folder");
-        });
-
-        document.getElementById("cancel-button").addEventListener("click", closeModal);
-        document.getElementById("close-preview-button").addEventListener(
-            "click",
-            closeFilePreview
-        );
-
-        modalOverlay.addEventListener("click", event => {
-            if (event.target === modalOverlay) closeModal();
-        });
-
-        previewOverlay.addEventListener("click", event => {
-            if (event.target === previewOverlay) closeFilePreview();
-        });
-
-        document.addEventListener("keydown", event => {
-            if (event.key === "Escape" && previewOverlay.classList.contains("show")) {
-                closeFilePreview();
-            }
-        });
-
-        document.getElementById("create-form").addEventListener("submit", async event => {
-            event.preventDefault();
-
-            const name = itemNameInput.value.trim();
-            if (!name) return;
-
+        async function openForEditing(item) {
+            let session;
             try {
-                const saved = await requestJSON("/api/workspace/items", {
-                    method: "POST",
-                    body: JSON.stringify({ name, kind: modalType })
-                });
-                items.unshift(mapWorkspaceItem(saved));
-                selectedIds.clear();
-                closeModal();
-                render();
+                session = await api(`/api/workspace/files/${item.id}/open`, { method: "POST" });
             } catch (error) {
-                alert(`Could not create item: ${error.message}`);
-            }
-        });
-
-        document.getElementById("upload-button").addEventListener("click", () => {
-            uploadInput.click();
-        });
-
-        uploadInput.addEventListener("change", async event => {
-            const files = Array.from(event.target.files);
-
-            for (const file of files) {
-                try {
-                    const saved = await requestJSON("/api/workspace/uploads", {
-                        method: "POST",
-                        body: JSON.stringify({
-                            name: file.name,
-                            size: file.size,
-                            mime_type: file.type || null
-                        })
-                    });
-                    items.unshift(mapWorkspaceItem(saved, file));
-                } catch (error) {
-                    alert(`Could not save ${file.name}: ${error.message}`);
-                }
-            }
-            render();
-            uploadInput.value = "";
-        });
-
-        document.getElementById("download-button").addEventListener("click", () => {
-            const selected = items.filter(item => selectedIds.has(item.id));
-
-            if (!selected.length) {
-                alert("Please select a file to download.");
-                return;
-            }
-
-            const downloadable = selected.filter(item => item.kind === "file");
-
-            if (!downloadable.length) {
-                alert("Please select a file, not just a folder.");
-                return;
-            }
-
-            for (const item of downloadable) {
-                let blob;
-
-                if (item.file) {
-                    blob = item.file;
-                } else if (item.size === 0) {
-                    blob = new Blob([""], { type: "text/plain" });
+                if (error.status === 409 && error.data && error.data.lock && error.data.lock.owner) {
+                    const lock = error.data.lock;
+                    toast(`${error.message} ${lock.owner} has had it open since ${formatDate(lock.acquired_at)}.`, "error", 9000);
                 } else {
-                    alert(
-                        `${item.name} is saved as metadata only. Its contents are not stored on the server.`
-                    );
-                    continue;
+                    toast(error.message, "error");
                 }
+                await refresh();
+                return;
+            }
+            try {
+                await downloadFrom(session.working_copy_url, item.name);
+                toast(`${item.name} is locked for you and downloading. Open it from your browser's downloads ` +
+                      `(Ctrl+J) to edit it in its desktop app. When you are done, click Save to Synapse.`, "success", 12000);
+            } catch (error) {
+                toast(`The file is locked for you, but the download failed: ${error.message} ` +
+                      `Use "Download working copy" to try again.`, "error", 10000);
+            }
+            await refresh();
+        }
 
-                const url = URL.createObjectURL(blob);
-                const link = document.createElement("a");
-                link.href = url;
-                link.download = item.name;
-                document.body.appendChild(link);
-                link.click();
-                link.remove();
-                setTimeout(() => URL.revokeObjectURL(url), 1000);
+        async function downloadWorkingCopy(session) {
+            try {
+                await downloadFrom(session.working_copy_url, (session.file || {}).name || "file");
+                toast("Working copy downloaded.", "success");
+            } catch (error) {
+                toast(error.message, "error");
+            }
+            await refresh();
+        }
+
+        let pendingSave = null;
+
+        function chooseFileToSave(session) {
+            const file = session.file || {};
+            pendingSave = session;
+            const input = $("save-input");
+            input.value = "";
+            input.accept = file.extension ? `.${file.extension}` : "";
+            input.click();
+        }
+
+        $("save-input").addEventListener("change", async event => {
+            const chosen = event.target.files[0];
+            const session = pendingSave;
+            pendingSave = null;
+            if (!chosen || !session) return;
+
+            const original = (session.file || {}).name || "the file";
+            const form = new FormData();
+            form.append("file_id", session.file_id);
+            form.append("file", chosen, chosen.name);
+            toast(`Uploading ${chosen.name} to Synapse…`, "info", 3000);
+            try {
+                const result = await api(session.save_url, { method: "POST", body: form });
+                toast(result.message, result.lock_released ? "success" : "info", 9000);
+                if (!result.name_matches) {
+                    toast(`Note: you selected "${chosen.name}" to replace "${original}".`, "info", 9000);
+                }
+            } catch (error) {
+                toast(`Save to Synapse failed: ${error.message}`, "error", 12000);
+            }
+            await refresh();
+        });
+
+        async function discardSession(session) {
+            const name = (session.file || {}).name || "this file";
+            const ok = await confirmDialog(
+                `Discard changes to ${name}?`,
+                "The file on the Synapse server will stay exactly as it was, and the lock will be " +
+                "released so other users can open it. Edits in your local working copy will not be uploaded.",
+                "Discard Changes", true);
+            if (!ok) return;
+            try {
+                await api(`/api/workspace/sessions/${session.session_id}/discard`, {
+                    method: "POST", body: JSON.stringify({ confirm: true }) });
+                toast(`Changes to ${name} discarded. The lock was released.`, "success");
+            } catch (error) {
+                toast(error.message, "error");
+            }
+            await refresh();
+        }
+
+        async function releaseSession(session) {
+            const name = (session.file || {}).name || "this file";
+            const ok = await confirmDialog(
+                "You have not saved your latest changes to Synapse.",
+                `Saving inside Word, Excel or another desktop app is not the same as saving to Synapse. ` +
+                `If you release the lock on ${name} now, the server file stays unchanged and any edits ` +
+                `on your computer are not uploaded. Release the lock anyway?`,
+                "Release Lock", true);
+            if (!ok) return;
+            try {
+                await api(`/api/workspace/sessions/${session.session_id}/release`, {
+                    method: "POST", body: JSON.stringify({ confirm_unsaved: true }) });
+                toast(`Lock on ${name} released.`, "success");
+            } catch (error) {
+                toast(error.message, "error");
+            }
+            await refresh();
+        }
+
+        async function sendHeartbeat() {
+            if (!sessions.length) return;
+            try {
+                const results = await api("/api/workspace/sessions/heartbeat", { method: "POST" });
+                const lost = results.filter(r => !r.ok);
+                for (const r of lost) toast(r.detail, "error", 15000);
+                if (lost.length) await refresh();
+            } catch (error) {
+                toast(`Could not renew your file locks: ${error.message}`, "error");
+            }
+        }
+
+        /* ==================================================================
+         * Other file actions
+         * ================================================================== */
+        async function downloadItem(item) {
+            try {
+                await downloadFrom(`/api/workspace/files/${item.id}/download`, item.name);
+            } catch (error) {
+                toast(`Could not download ${item.name}: ${error.message}`, "error");
+                await refresh();
+            }
+        }
+
+        async function toggleStar(item) {
+            try {
+                await api(`/api/workspace/files/${item.id}/star`, { method: item.starred ? "DELETE" : "POST" });
+            } catch (error) {
+                toast(error.message, "error");
+            }
+            await refresh();
+        }
+
+        async function trashItem(item) {
+            const ok = await confirmDialog(`Move ${item.name} to Trash?`,
+                "It will disappear from all views (including for users it is shared with). You can restore it from Trash.",
+                "Move to Trash", true);
+            if (!ok) return;
+            try {
+                await api(`/api/workspace/files/${item.id}/trash`, { method: "POST" });
+                toast(`${item.name} moved to Trash.`, "success");
+            } catch (error) {
+                toast(error.message, "error");
+            }
+            await refresh();
+        }
+
+        async function restoreItem(item) {
+            try {
+                await api(`/api/workspace/files/${item.id}/restore`, { method: "POST" });
+                toast(`${item.name} restored.`, "success");
+            } catch (error) {
+                toast(error.message, "error");
+            }
+            await refresh();
+        }
+
+        async function shareItem(item) {
+            let shares = [];
+            try {
+                shares = await api(`/api/workspace/files/${item.id}/permissions`);
+            } catch (error) {
+                toast(error.message, "error");
+                return;
+            }
+            const rows = shares.length
+                ? shares.map(s => `<li><span>${escapeHTML(s.username)} · ${s.permission === "write" ? "can edit" : "can view"}</span>
+                       <button type="button" class="small-btn danger" data-unshare="${escapeHTML(s.username)}">Remove</button></li>`).join("")
+                : `<li class="muted">Not shared with anyone yet.</li>`;
+            const body = await dialog({
+                title: `Share ${item.name}`,
+                confirmText: "Share",
+                html: `
+                    <ul class="share-list">${rows}</ul>
+                    <label for="share-username">Username</label>
+                    <input id="share-username" type="text" maxlength="40" placeholder="e.g. bob" autocomplete="off">
+                    <label for="share-permission">Permission</label>
+                    <select id="share-permission">
+                        <option value="write">Can edit (open, lock and save)</option>
+                        <option value="read">Can view (download only)</option>
+                    </select>`,
+                onOpen: el => {
+                    el.querySelector("#share-username").focus();
+                    el.querySelectorAll("[data-unshare]").forEach(button =>
+                        button.addEventListener("click", async () => {
+                            try {
+                                await api(`/api/workspace/files/${item.id}/share/${encodeURIComponent(button.dataset.unshare)}`,
+                                          { method: "DELETE" });
+                                button.closest("li").remove();
+                                toast(`Stopped sharing with ${button.dataset.unshare}.`, "success");
+                            } catch (error) { toast(error.message, "error"); }
+                        }));
+                },
+                validate: el => el.querySelector("#share-username").value.trim().length >= 3,
+            });
+            if (!body) return;
+            const username = body.querySelector("#share-username").value.trim();
+            const permission = body.querySelector("#share-permission").value;
+            try {
+                await api(`/api/workspace/files/${item.id}/share`, {
+                    method: "POST", body: JSON.stringify({ username, permission }) });
+                toast(`${item.name} shared with ${username}.`, "success");
+            } catch (error) {
+                toast(error.message, "error");
+            }
+        }
+
+        /* ---------------- Read-only preview ---------------- */
+        function closePreview() {
+            $("preview-overlay").classList.remove("show");
+            $("preview-content").replaceChildren();
+            if (previewObjectURL) { URL.revokeObjectURL(previewObjectURL); previewObjectURL = null; }
+        }
+
+        async function previewItem(item) {
+            const cat = category(item);
+            if (!["pdf", "image", "text", "media"].includes(cat)) {
+                const ok = await confirmDialog(`Preview not available`,
+                    `${typeLabel(item)} files cannot be previewed in the browser. Use Open to edit it in its desktop app, or download a copy.`,
+                    "Download");
+                if (ok) downloadItem(item);
+                return;
+            }
+            $("preview-title").textContent = item.name;
+            const content = $("preview-content");
+            content.textContent = "Loading…";
+            $("preview-overlay").classList.add("show");
+            let blob;
+            try {
+                const response = await fetch(`/api/workspace/files/${item.id}/download`, { credentials: "same-origin" });
+                if (!response.ok) {
+                    let detail = `HTTP ${response.status}`;
+                    try { detail = (await response.json()).detail || detail; } catch (_) {}
+                    throw new Error(detail);
+                }
+                blob = await response.blob();
+            } catch (error) {
+                closePreview();
+                toast(`Could not preview ${item.name}: ${error.message}`, "error");
+                return;
+            }
+            content.replaceChildren();
+            if (cat === "text") {
+                const pre = document.createElement("pre");
+                pre.className = "text-preview";
+                pre.textContent = await blob.text();
+                content.appendChild(pre);
+                return;
+            }
+            previewObjectURL = URL.createObjectURL(blob);
+            let el;
+            if (cat === "image") {
+                el = document.createElement("img");
+                el.className = "image-preview";
+                el.alt = item.name;
+            } else if (cat === "pdf") {
+                el = document.createElement("iframe");
+                el.className = "document-preview";
+                el.title = item.name;
+                el.setAttribute("sandbox", "");
+            } else {
+                el = document.createElement(item.extension && ["mp3", "wav", "ogg"].includes(item.extension) ? "audio" : "video");
+                el.className = "media-preview";
+                el.controls = true;
+            }
+            el.src = previewObjectURL;
+            content.appendChild(el);
+        }
+
+        $("close-preview-button").addEventListener("click", closePreview);
+        $("preview-overlay").addEventListener("click", e => { if (e.target === $("preview-overlay")) closePreview(); });
+
+        /* ---------------- Create and upload ---------------- */
+        $("create-file-button").addEventListener("click", async () => {
+            const body = await dialog({
+                title: "Create File",
+                confirmText: "Create",
+                html: `
+                    <p>A new, empty file is stored on the server. Open it to edit it in its desktop app.</p>
+                    <label for="new-file-name">Name</label>
+                    <input id="new-file-name" type="text" maxlength="120" placeholder="e.g. Meeting notes" autocomplete="off">
+                    <label for="new-file-type">Type</label>
+                    <select id="new-file-type">
+                        <option value=".docx">Word document (.docx)</option>
+                        <option value=".xlsx">Excel workbook (.xlsx)</option>
+                        <option value=".pptx">PowerPoint presentation (.pptx)</option>
+                        <option value=".txt">Text file (.txt)</option>
+                        <option value=".md">Markdown (.md)</option>
+                        <option value=".csv">CSV (.csv)</option>
+                        <option value=".json">JSON (.json)</option>
+                    </select>`,
+                onOpen: el => el.querySelector("#new-file-name").focus(),
+                validate: el => el.querySelector("#new-file-name").value.trim().length > 0,
+            });
+            if (!body) return;
+            let name = body.querySelector("#new-file-name").value.trim();
+            const ext = body.querySelector("#new-file-type").value;
+            if (!name.toLowerCase().endsWith(ext)) name += ext;
+            try {
+                await api("/api/workspace/items", { method: "POST", body: JSON.stringify({ name, kind: "file" }) });
+                toast(`${name} created.`, "success");
+                if (view !== "mine") setView("mine"); else await refresh();
+            } catch (error) {
+                toast(`Could not create ${name}: ${error.message}`, "error");
             }
         });
 
-        document.getElementById("logout-button").addEventListener("click", async () => {
+        $("create-folder-button").addEventListener("click", async () => {
+            const body = await dialog({
+                title: "New Folder",
+                confirmText: "Create",
+                html: `<label for="new-folder-name">Name</label>
+                       <input id="new-folder-name" type="text" maxlength="120" autocomplete="off">`,
+                onOpen: el => el.querySelector("#new-folder-name").focus(),
+                validate: el => el.querySelector("#new-folder-name").value.trim().length > 0,
+            });
+            if (!body) return;
+            const name = body.querySelector("#new-folder-name").value.trim();
             try {
-                await requestJSON("/api/workspace/session", { method: "DELETE" });
+                await api("/api/workspace/items", { method: "POST", body: JSON.stringify({ name, kind: "folder" }) });
+                toast(`Folder ${name} created.`, "success");
+                await refresh();
             } catch (error) {
-                alert(`Could not log out: ${error.message}`);
+                toast(error.message, "error");
+            }
+        });
+
+        $("upload-button").addEventListener("click", () => $("upload-input").click());
+        $("upload-input").addEventListener("change", async event => {
+            const files = Array.from(event.target.files);
+            for (const file of files) {
+                const form = new FormData();
+                form.append("file", file, file.name);
+                try {
+                    await api("/api/workspace/upload", { method: "POST", body: form });
+                    toast(`${file.name} uploaded.`, "success", 3000);
+                } catch (error) {
+                    toast(`Could not upload ${file.name}: ${error.message}`, "error");
+                }
+            }
+            event.target.value = "";
+            if (view !== "mine" && view !== "recent") setView("mine"); else await refresh();
+        });
+
+        /* ---------------- Event wiring ---------------- */
+        fileList.addEventListener("click", event => {
+            const button = event.target.closest("[data-action]");
+            if (!button || button.disabled) return;
+            const item = items.find(i => i.id === button.dataset.id);
+            if (!item) return;
+            const session = sessionFor(item.id);
+            ({
+                open: () => openForEditing(item),
+                download: () => downloadItem(item),
+                preview: () => previewItem(item),
+                save: () => session && chooseFileToSave(session),
+                discard: () => session && discardSession(session),
+                release: () => session && releaseSession(session),
+                share: () => shareItem(item),
+                star: () => toggleStar(item),
+                trash: () => trashItem(item),
+                restore: () => restoreItem(item),
+            })[button.dataset.action]?.();
+        });
+
+        $("session-list").addEventListener("click", event => {
+            const button = event.target.closest("[data-session-action]");
+            if (!button) return;
+            const session = sessions.find(s => s.session_id === button.dataset.session);
+            if (!session) return;
+            ({
+                copy: () => downloadWorkingCopy(session),
+                save: () => chooseFileToSave(session),
+                discard: () => discardSession(session),
+            })[button.dataset.sessionAction]?.();
+        });
+
+        function setView(name) {
+            view = name;
+            document.querySelectorAll(".nav-item").forEach(b => b.classList.toggle("active", b.dataset.view === name));
+            searchInput.value = "";
+            refresh();
+        }
+        document.querySelectorAll(".nav-item").forEach(b => b.addEventListener("click", () => setView(b.dataset.view)));
+
+        searchInput.addEventListener("input", () => {
+            clearTimeout(searchTimer);
+            searchTimer = setTimeout(refresh, 250);
+        });
+        searchInput.addEventListener("keydown", e => {
+            if (e.key !== "Enter") return;
+            e.preventDefault();
+            clearTimeout(searchTimer);
+            refresh();
+        });
+
+        // Never let the lock be left silently: warn before leaving or logging out.
+        window.addEventListener("beforeunload", e => {
+            if (unsavedSessions().length) {
+                e.preventDefault();
+                e.returnValue = "You have not saved your latest changes to Synapse.";
+            }
+        });
+
+        $("logout-button").addEventListener("click", async () => {
+            const open = unsavedSessions();
+            if (open.length) {
+                const ok = await confirmDialog("You have not saved your latest changes to Synapse.",
+                    `${open.length} file(s) are open for editing and not saved to Synapse. They stay locked ` +
+                    `for you after logging out — log in again later to Save to Synapse or discard. Log out anyway?`,
+                    "Log out");
+                if (!ok) return;
+            }
+            try {
+                await api("/api/workspace/session", { method: "DELETE" });
+            } catch (error) {
+                toast(`Could not log out: ${error.message}`, "error");
                 return;
             }
             sessionStorage.removeItem("username");
             window.location.href = "/login-page";
         });
 
-        loadWorkspaceItems();
+        /* ---------------- Start ---------------- */
+        (async () => {
+            try {
+                me = await api("/api/workspace/me");
+                $("username").textContent = me.username;
+                $("avatar").textContent = me.username.slice(0, 1).toUpperCase();
+            } catch (_) { /* redirected to login on 401 */ }
+            await refresh();
+            setInterval(sendHeartbeat, HEARTBEAT_MS);
+            setInterval(() => { if (!document.hidden && !dialogResolve) refresh(); }, REFRESH_MS);
+            document.addEventListener("visibilitychange", () => { if (!document.hidden) { sendHeartbeat(); refresh(); } });
+        })();
+    })();
     </script>
 </body>
 </html>

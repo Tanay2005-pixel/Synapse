@@ -13,7 +13,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, EmailStr, Field
-from src.py.db_connection import get_db_connection
+from src.py.store import DuplicateError, get_store
 
 
 app = FastAPI(title="Synapse Registration")
@@ -87,25 +87,8 @@ def hash_password(password: str) -> dict:
 
 
 def find_existing_user(username: str, email: str):
-    with get_db_connection() as conn:
-        row = conn.execute(
-            """
-            SELECT
-                CASE
-                    WHEN LOWER(username) = LOWER(%s)
-                        THEN 'username'
-                    WHEN LOWER(email) = LOWER(%s)
-                        THEN 'email'
-                END
-            FROM users
-            WHERE LOWER(username) = LOWER(%s)
-               OR LOWER(email) = LOWER(%s)
-            LIMIT 1;
-            """,
-            (username, email, username, email),
-        ).fetchone()
-
-    return row[0] if row else None
+    # Returns "username", "email" or None (backend chosen by SYNAPSE_STORAGE).
+    return get_store().find_existing_user(username, email)
 
 #creating the otp to send
 def send_otp_email(email: str, otp: str):
@@ -282,35 +265,25 @@ def verify_registration_otp(data: VerifyOTPRequest):
                 detail="Incorrect OTP."
             )
 
-        # OTP is correct. Now save the verified user.
-                # OTP is correct. Save the user in PostgreSQL.
-        duplicate = find_existing_user(username, email)
+        # OTP is correct. Save the verified user. create_user re-checks
+        # for duplicates atomically and raises DuplicateError.
+        password_data = hash_password("1234")
+        password_hash = json.dumps(password_data)
 
-        if duplicate:
+        try:
+            get_store().create_user(username, email, password_hash)
+        except DuplicateError as exc:
             pending_registrations.pop(email, None)
 
             detail = (
                 "This username is already registered."
-                if duplicate == "username"
+                if exc.field == "username"
                 else "This email is already registered."
             )
             raise HTTPException(
                 status_code=409,
                 detail=detail
-            )
-
-        password_data = hash_password("1234")
-        password_hash = json.dumps(password_data)
-
-        try:
-            with get_db_connection() as conn:
-                conn.execute(
-                    """
-                    INSERT INTO users (username, email, password_hash)
-                    VALUES (%s, %s, %s)
-                    """,
-                    (username, email, password_hash),
-                )
+            ) from exc
         except Exception as exc:
             pending_registrations.pop(email, None)
             raise HTTPException(

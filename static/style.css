@@ -534,3 +534,359 @@ tbody tr:last-child td {
         flex: 1;
     }
 }
+
+/* ==========================================================================
+   Dashboard (desktop editing, lock status, views)
+   ========================================================================== */
+:root {
+    --blue: #1f5fa8;
+    --blue-soft: #eaf2fc;
+    --green: #2e7d32;
+    --green-soft: #eaf6eb;
+    --amber: #a15c00;
+    --amber-soft: #fff4e0;
+}
+
+.brand {
+    color: var(--red);
+}
+
+.header-search {
+    max-width: 520px;
+}
+
+.avatar {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: var(--red);
+    color: white;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 13px;
+}
+
+.muted {
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.view-heading {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+}
+
+.view-heading h2 {
+    font-size: 24px;
+    margin-bottom: 5px;
+}
+
+.btn-danger,
+.btn-primary.btn-danger {
+    background: var(--red);
+    border-color: var(--red);
+    color: white;
+}
+
+/* "Editing on your computer" panel */
+.sessions-card {
+    background: var(--amber-soft);
+    border: 1px solid #f1d29b;
+    border-radius: 12px;
+    padding: 16px 18px;
+    margin-bottom: 20px;
+}
+
+.sessions-heading {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 6px;
+}
+
+.sessions-heading h3 {
+    font-size: 16px;
+}
+
+.sessions-note {
+    font-size: 13px;
+    color: #5b4a2c;
+    line-height: 1.5;
+    margin-bottom: 10px;
+}
+
+.session-list {
+    list-style: none;
+    display: grid;
+    gap: 8px;
+}
+
+.session-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: white;
+    border: 1px solid #f1d29b;
+    border-radius: 9px;
+    padding: 10px 12px;
+    flex-wrap: wrap;
+}
+
+.session-info {
+    flex: 1;
+    min-width: 200px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.warn {
+    color: var(--amber);
+    font-weight: 600;
+}
+
+/* File table */
+.actions-col {
+    min-width: 260px;
+}
+
+td {
+    vertical-align: middle;
+}
+
+.name-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+}
+
+.copy-badges {
+    display: flex;
+    gap: 5px;
+    flex-wrap: wrap;
+}
+
+.badge {
+    display: inline-block;
+    padding: 2px 7px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: normal;
+    background: #f0f0f2;
+    color: #555;
+    white-space: nowrap;
+}
+
+.badge.server {
+    background: #f0f0f2;
+    color: #555;
+}
+
+.badge.working {
+    background: var(--amber-soft);
+    color: var(--amber);
+    border: 1px solid #f1d29b;
+}
+
+tbody tr.editing-row {
+    background: #fffaf0;
+}
+
+.star-btn {
+    border: 0;
+    background: transparent;
+    font-size: 17px;
+    line-height: 1;
+    color: #b5b5b5;
+    padding: 2px;
+}
+
+.star-btn.on,
+.star-btn:hover {
+    color: #e0a100;
+}
+
+.type-icon {
+    flex-shrink: 0;
+    width: 38px;
+    height: 30px;
+    border-radius: 6px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    font-weight: bold;
+    letter-spacing: 0.3px;
+    color: white;
+    background: #8a8f98;
+}
+
+.type-icon.folder  { background: #e3a008; }
+.type-icon.word    { background: #2b579a; }
+.type-icon.sheet   { background: #217346; }
+.type-icon.slides  { background: #c43e1c; }
+.type-icon.pdf     { background: #b30b00; }
+.type-icon.image   { background: #7b3fb5; }
+.type-icon.text    { background: #5f6b7a; }
+.type-icon.media   { background: #0b7a8a; }
+.type-icon.archive { background: #6d4c41; }
+
+.lock-chip {
+    display: inline-block;
+    padding: 4px 9px;
+    border-radius: 12px;
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+.lock-chip.free    { background: var(--green-soft); color: var(--green); }
+.lock-chip.mine    { background: var(--blue-soft); color: var(--blue); }
+.lock-chip.other   { background: #fdecec; color: var(--red-dark); }
+.lock-chip.unknown { background: #f0f0f2; color: #666; }
+
+.row-actions {
+    flex-wrap: wrap;
+}
+
+.small-btn {
+    font-size: 13px;
+    white-space: nowrap;
+}
+
+.small-btn.primary {
+    background: var(--red);
+    border-color: var(--red);
+    color: white;
+}
+
+.small-btn.primary:hover {
+    background: var(--red-dark);
+    color: white;
+}
+
+.small-btn.danger {
+    color: var(--red-dark);
+}
+
+.small-btn.subtle {
+    color: #666;
+}
+
+.small-btn:disabled,
+.small-btn:disabled:hover {
+    cursor: not-allowed;
+    opacity: 0.45;
+    color: #333;
+    border-color: var(--border);
+    background: white;
+}
+
+.small-btn.primary:disabled {
+    background: #c9a0a0;
+    color: white;
+}
+
+/* Dialog extras */
+.modal select {
+    width: 100%;
+    padding: 11px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-bottom: 14px;
+    background: white;
+    font-size: 14px;
+}
+
+.modal p {
+    line-height: 1.5;
+}
+
+.share-list {
+    list-style: none;
+    margin-bottom: 14px;
+    display: grid;
+    gap: 6px;
+    font-size: 14px;
+}
+
+.share-list li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+}
+
+.preview-heading .muted {
+    flex: 1;
+    margin: 0 12px;
+}
+
+/* Toasts */
+.toast-area {
+    position: fixed;
+    right: 18px;
+    bottom: 18px;
+    display: grid;
+    gap: 8px;
+    max-width: min(420px, calc(100vw - 32px));
+    z-index: 100;
+}
+
+.toast {
+    padding: 12px 14px;
+    border-radius: 9px;
+    font-size: 14px;
+    line-height: 1.45;
+    background: #333;
+    color: white;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
+}
+
+.toast.success { background: var(--green); }
+.toast.error   { background: var(--red-dark); }
+
+@media (max-width: 950px) {
+    .header {
+        flex-wrap: wrap;
+    }
+
+    .header-search {
+        order: 3;
+        max-width: none;
+        flex-basis: 100%;
+    }
+}
+
+@media (max-width: 700px) {
+    .view-heading .actions {
+        width: 100%;
+    }
+
+    .user-info {
+        display: none;
+    }
+}
+
+/* Keep size, dates, lock chips and buttons on one line; the table scrolls on narrow screens. */
+tbody td:not(:first-child) {
+    white-space: nowrap;
+}
+
+@media (max-width: 700px) {
+    /* Stacked layout: the sidebar row must not absorb the spare height. */
+    .layout {
+        grid-template-rows: auto 1fr;
+        align-content: start;
+    }
+
+    .sidebar {
+        align-items: center;
+    }
+}

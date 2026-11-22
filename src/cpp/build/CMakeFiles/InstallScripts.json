@@ -1,0 +1,7 @@
+{
+	"InstallScripts" : 
+	[
+		"/mnt/c/studies/libraries/PROJECTS/Synapse/src/cpp/build/cmake_install.cmake"
+	],
+	"Parallel" : false
+}

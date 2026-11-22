@@ -13,7 +13,7 @@ from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, EmailStr, Field
-from src.py.db_connection import get_db_connection
+from src.py.store import get_store
 
 from src.py.registration import (
     send_registration_otp,
@@ -26,6 +26,7 @@ from src.py.workspace import (
     get_current_user_id,
     router as workspace_router,
 )
+from src.py.editing import router as editing_router
 
 app = FastAPI(title="Synapse Login")
 
@@ -49,6 +50,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.include_router(workspace_router)
+app.include_router(editing_router)
 
 OTP_EXPIRY = 300
 pending_otps: dict[str, dict[str, Any]] = {}
@@ -67,27 +69,8 @@ class LoginVerifyOTPRequest(BaseModel):
 
 
 def find_user_by_email(email):
-    email = email.strip().casefold()
-
-    with get_db_connection() as conn:
-        row = conn.execute(
-            """
-            SELECT id, username, email
-            FROM users
-            WHERE LOWER(email) = %s
-            LIMIT 1
-            """,
-            (email,),
-        ).fetchone()
-
-    if not row:
-        return None
-
-    return {
-        "id": row[0],
-        "username": row[1],
-        "email": row[2],
-    }
+    # Returns {"id", "username", "email"} or None (backend chosen by SYNAPSE_STORAGE).
+    return get_store().find_user_by_email(email)
 
 
 def send_email_otp(email, otp):

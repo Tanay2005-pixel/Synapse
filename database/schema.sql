@@ -64,3 +64,25 @@ ON permissions(user_id);
 
 CREATE INDEX idx_activity_created
 ON activity_logs(created_at);
+
+# semnatic search 
+CREATE EXTENSION IF NOT EXISTS vector;
+
+CREATE TABLE IF NOT EXISTS semantic_chunks (
+    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+
+    file_id BIGINT NOT NULL,
+
+    chunk_index INT NOT NULL CHECK (chunk_index >= 0),
+    chunk_text TEXT NOT NULL,
+    embedding VECTOR(384) NOT NULL,
+
+    UNIQUE (file_id, chunk_index)
+);
+
+CREATE INDEX IF NOT EXISTS idx_semantic_chunks_embedding
+ON semantic_chunks
+USING hnsw (embedding vector_cosine_ops);
+
+CREATE INDEX IF NOT EXISTS idx_semantic_chunks_file
+ON semantic_chunks(file_id);

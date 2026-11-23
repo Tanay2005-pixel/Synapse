@@ -113,7 +113,8 @@
 
 
 <script>
-    const API = "http://127.0.0.1:8000";
+    // Same origin as the page, so registration also works from other machines on the LAN.
+    const API = "";
 
     const form = document.getElementById("registration-form");
     const username = document.getElementById("username");

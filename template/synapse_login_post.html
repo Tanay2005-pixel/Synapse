@@ -77,8 +77,6 @@
 </main>
 
 <script>
-    const API = "http://127.0.0.1:8000";
-
     const form = document.getElementById("login-form");
     const usernameInput = document.getElementById("username");
     const emailInput = document.getElementById("email");
@@ -99,7 +97,7 @@
     }
 
     async function post(path, body) {
-        const response = await fetch(API + path, {
+        const response = await fetch(path, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json"

@@ -1,0 +1,1 @@
+Natural Language Processing (NLP) is a branch of Artificial Intelligence that helps computers understand and process human language. Common NLP tasks include tokenization, sentiment analysis, text classification, and named entity recognition. NLP is used in chatbots, translation systems, and virtual assistants.

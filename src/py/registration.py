@@ -12,8 +12,8 @@ from threading import Lock
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, EmailStr, Field
+from src.py.store import DuplicateError, get_store
 
 
 app = FastAPI(title="Synapse Registration")
@@ -21,12 +21,7 @@ app = FastAPI(title="Synapse Registration")
 # Path of the directory - register.html
 BASE_DIR = Path(__file__).resolve().parents[2]
 
-DATA_FILE = BASE_DIR / "user.json"
-app.mount(
-    "/static",
-    StaticFiles(directory=str(BASE_DIR / "static")),
-    name="static",
-)
+
 
 templates = Jinja2Templates(
     directory=str(BASE_DIR / "template")
@@ -69,45 +64,31 @@ def validate_username(username: str) -> bool:
         re.fullmatch(r"[A-Za-z0-9_.-]{3,40}", username)
     )
 
+def hash_password(password: str) -> dict:
+    salt = secrets.token_bytes(16)
+    iterations = 600_000
 
-#loading and uploading data to the database
-def load_users():
-    if not DATA_FILE.exists():
-        return {}
+    hashed = hashlib.pbkdf2_hmac(
+        "sha256",
+        password.encode("utf-8"),
+        salt,
+        iterations,
+    )
 
-    with open(DATA_FILE, "r", encoding="utf-8") as file:
-        return json.load(file)
+    import base64
 
-
-def save_users(users):
-    # Write to a temporary file, then replace the original.
-    temp_file = DATA_FILE.with_suffix(".tmp")
-
-    with open(temp_file, "w", encoding="utf-8") as file:
-        json.dump(users, file, indent=4)
-
-    os.replace(temp_file, DATA_FILE)
+    return {
+        "algorithm": "pbkdf2_sha256",
+        "salt": base64.b64encode(salt).decode("utf-8"),
+        "hash": base64.b64encode(hashed).decode("utf-8"),
+        "iterations": iterations,
+    }
 
 
-def find_existing_user(users, username, email):
-    username_key = username.casefold()
-    email_key = email.casefold()
 
-    for key, user in users.items():
-        if not isinstance(user, dict):
-            continue
-
-        existing_username = user.get("username", key)
-        existing_email = user.get("email", "")
-
-        if str(existing_username).casefold() == username_key:
-            return "username"
-
-        if str(existing_email).casefold() == email_key:
-            return "email"
-
-    return None
-
+def find_existing_user(username: str, email: str):
+    # Returns "username", "email" or None (backend chosen by SYNAPSE_STORAGE).
+    return get_store().find_existing_user(username, email)
 
 #creating the otp to send
 def send_otp_email(email: str, otp: str):
@@ -115,6 +96,8 @@ def send_otp_email(email: str, otp: str):
     smtp_password = os.getenv("SMTP_PASSWORD")
     smtp_host = os.getenv("SMTP_HOST", "smtp.gmail.com")
     smtp_port = int(os.getenv("SMTP_PORT", "587"))
+    print("DEBUG SMTP_USER set:", bool(smtp_user))
+    print("DEBUG SMTP_PASSWORD set:", bool(smtp_password))
 
     if not smtp_user or not smtp_password:
         raise HTTPException(
@@ -178,9 +161,7 @@ def send_registration_otp(data: RegistrationRequest):
         )
 
     # Check whether username or email is already registered.
-    with file_lock:
-        users = load_users()
-        duplicate = find_existing_user(users, username, email)
+    duplicate = find_existing_user(username, email)
 
     if duplicate == "username":
         raise HTTPException(
@@ -284,39 +265,37 @@ def verify_registration_otp(data: VerifyOTPRequest):
                 detail="Incorrect OTP."
             )
 
-        # OTP is correct. Now save the verified user.
-        with file_lock:
-            users = load_users()
-            duplicate = find_existing_user(users, username, email)
+        # OTP is correct. Save the verified user. create_user re-checks
+        # for duplicates atomically and raises DuplicateError.
+        password_data = hash_password("1234")
+        password_hash = json.dumps(password_data)
 
-            if duplicate:
-                pending_registrations.pop(email, None)
+        try:
+            get_store().create_user(username, email, password_hash)
+        except DuplicateError as exc:
+            pending_registrations.pop(email, None)
 
-                detail = (
-                    "This username is already registered."
-                    if duplicate == "username"
-                    else "This email is already registered."
-                )
-                raise HTTPException(
-                    status_code=409,
-                    detail=detail
-                )
-
-            # The admin will assign the password later.
-            users[username] = {
-                "username": username,
-                "email": email,
-                "email_verified": True,
-                "password": 1234
-            }
-
-            save_users(users)
+            detail = (
+                "This username is already registered."
+                if exc.field == "username"
+                else "This email is already registered."
+            )
+            raise HTTPException(
+                status_code=409,
+                detail=detail
+            ) from exc
+        except Exception as exc:
+            pending_registrations.pop(email, None)
+            raise HTTPException(
+                status_code=500,
+                detail="Could not save user in database."
+            ) from exc
 
         # OTP cannot be reused.
         pending_registrations.pop(email, None)
 
     return {
-        "message": "Email verified and registration successful. The admin can now assign your password.",
+        "message": "Email verified and registration successful. Your temporary password is 1234.",
         "username": username
     }
 

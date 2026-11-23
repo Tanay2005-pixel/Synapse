@@ -1,6 +1,5 @@
 
 import os
-import json
 import time
 import secrets
 import smtplib
@@ -9,11 +8,12 @@ from pathlib import Path
 from email.message import EmailMessage
 from typing import Any
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, HTTPException, Request, Response
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, EmailStr, Field
+from src.py.store import get_store
 
 from src.py.registration import (
     send_registration_otp,
@@ -21,18 +21,25 @@ from src.py.registration import (
     RegistrationRequest,
     VerifyOTPRequest as RegistrationVerifyOTPRequest,
 )
+from src.py.workspace import (
+    create_session,
+    get_current_user_id,
+    router as workspace_router,
+)
+from src.py.editing import router as editing_router
 
 app = FastAPI(title="Synapse Login")
 
 BASE_DIR = Path(__file__).resolve().parents[2]
-DATA_FILE = BASE_DIR / "user.json"
+
+templates = Jinja2Templates(
+    directory=str(BASE_DIR / "template")
+)
+
 app.mount(
     "/static",
     StaticFiles(directory=str(BASE_DIR / "static")),
     name="static",
-)
-templates = Jinja2Templates(
-    directory=str(BASE_DIR / "template")
 )
 
 app.add_middleware(
@@ -42,45 +49,28 @@ app.add_middleware(
     allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
+app.include_router(workspace_router)
+app.include_router(editing_router)
 
 OTP_EXPIRY = 300
 pending_otps: dict[str, dict[str, Any]] = {}
 
 
-class LoginOTPRequest(BaseModel):
+class LoginRequest(BaseModel):
     username: str = Field(min_length=3, max_length=40)
     email: EmailStr
 
-
-class VerifyOTPRequest(BaseModel):
+class LoginVerifyOTPRequest(BaseModel):
     username: str = Field(min_length=3, max_length=40)
     email: EmailStr
-    otp: str = Field(pattern=r"^\d{6}$")
+    otp: str = Field(pattern=r"^[0-9]{6}$")
 
 
-def load_users():
-    if not DATA_FILE.exists():
-        return {}
-
-    with open(DATA_FILE, "r", encoding="utf-8") as file:
-        return json.load(file)
 
 
-def find_user_by_username_and_email(username, email):
-    username = username.strip().casefold()
-    email = email.strip().casefold()
-
-    for key, user in load_users().items():
-        if not isinstance(user, dict):
-            continue
-
-        registered_username = str(user.get("username", key)).strip()
-        registered_email = str(user.get("email", "")).strip()
-        if (registered_username.casefold() == username
-                and registered_email.casefold() == email):
-            return user
-
-    return None
+def find_user_by_email(email):
+    # Returns {"id", "username", "email"} or None (backend chosen by SYNAPSE_STORAGE).
+    return get_store().find_user_by_email(email)
 
 
 def send_email_otp(email, otp):
@@ -130,7 +120,10 @@ def login_page(request: Request):
 
 
 @app.get("/workspace-page")
-def workspace_page(request: Request):
+def workspace_page(
+    request: Request,
+    user_id: int = Depends(get_current_user_id),
+):
     return templates.TemplateResponse(
         request=request,
         name="workspace.html",
@@ -138,20 +131,19 @@ def workspace_page(request: Request):
 
 
 @app.post("/send-otp")
-def send_otp(credentials: LoginOTPRequest):
-    username = credentials.username.strip()
+def send_otp(credentials: LoginRequest):
     email = str(credentials.email).strip().casefold()
+    user = find_user_by_email(email)
 
-    # Step 1: Match both submitted fields against the registered account.
-    user = find_user_by_username_and_email(username, email)
-
-    if not user:
+    if not user or (
+        user["username"].casefold()
+        != credentials.username.strip().casefold()
+    ):
         raise HTTPException(
             status_code=401,
             detail="Invalid username or email.",
         )
 
-    # Step 2: Apply a resend cooldown.
     now = time.time()
     previous = pending_otps.get(email)
 
@@ -161,10 +153,7 @@ def send_otp(credentials: LoginOTPRequest):
             detail="Please wait 30 seconds before requesting another OTP.",
         )
 
-    # Step 3: Generate and email a six-digit OTP.
     otp = f"{secrets.randbelow(1_000_000):06d}"
-
-    # Send first; only save a pending OTP if sending succeeds
     send_email_otp(email, otp)
 
     pending_otps[email] = {
@@ -172,25 +161,20 @@ def send_otp(credentials: LoginOTPRequest):
         "expires_at": now + OTP_EXPIRY,
         "last_sent": now,
         "attempts": 0,
-        "username": str(user.get("username") or username).strip(),
+        "username": user["username"],
+        "user_id": user["id"],
     }
 
-    return {"message": "OTP sent to your email."}
+    return {"message": "Username and email verified. OTP sent to your email."}
 
 
 @app.post("/verify-otp")
-def verify_otp(request: VerifyOTPRequest):
-    email = str(request.email).strip().casefold()
+def verify_otp(data: LoginVerifyOTPRequest, response: Response):
+    email = str(data.email).strip().casefold()
     record = pending_otps.get(email)
 
     if not record or time.time() > record["expires_at"]:
         pending_otps.pop(email, None)
-        raise HTTPException(
-            status_code=401,
-            detail="OTP expired or invalid. Request a new OTP.",
-        )
-
-    if record["username"].strip().casefold() != request.username.strip().casefold():
         raise HTTPException(
             status_code=401,
             detail="OTP expired or invalid. Request a new OTP.",
@@ -205,14 +189,25 @@ def verify_otp(request: VerifyOTPRequest):
             detail="Too many attempts. Request a new OTP.",
         )
 
-    if not secrets.compare_digest(request.otp, record["otp"]):
+    if (
+        record["username"].casefold()
+        != data.username.strip().casefold()
+    ):
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid username or OTP.",
+        )
+
+    if not secrets.compare_digest(data.otp, record["otp"]):
         raise HTTPException(
             status_code=401,
             detail="Incorrect OTP.",
         )
 
     username = record["username"]
+    user_id = record["user_id"]
     pending_otps.pop(email, None)
+    create_session(response, user_id)
 
     return {
         "message": "Login successful!",

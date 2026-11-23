@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-from reading_files import load_folder
+from .reading_files import load_folder
 
 s = Path(__file__).parent / "sample_docs"
 documents = load_folder(s)

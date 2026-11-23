@@ -1,8 +1,5 @@
-from pathlib import Path
 from sentence_transformers import util
-
-from embeddings import model, index_building
-
+from .embeddings import model
 
 def file_ranking(scores, chunks, file_name_chunks, top_k=3):
 

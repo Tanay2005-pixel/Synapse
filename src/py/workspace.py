@@ -491,6 +491,10 @@ def upload_file(
     """Store the file's bytes via the C++ chunk engine and record its chunks."""
     name = _clean_name(file.filename)
     store = get_store()
+    print("========== UPLOAD BACKEND DEBUG ==========")
+    print("Store class:", type(store).__name__)
+    print("SYNAPSE_STORAGE:", os.getenv("SYNAPSE_STORAGE"))
+    print("==========================================")
     if store.file_name_exists(user_id, name):  # fail fast before chunking
         raise _duplicate_error()
 

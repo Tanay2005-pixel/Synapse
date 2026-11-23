@@ -27,6 +27,7 @@ from src.py.workspace import (
     router as workspace_router,
 )
 from src.py.editing import router as editing_router
+from src.py.semantic import router as semantic_router
 
 app = FastAPI(title="Synapse Login")
 
@@ -51,6 +52,7 @@ app.add_middleware(
 )
 app.include_router(workspace_router)
 app.include_router(editing_router)
+app.include_router(semantic_router)
 
 OTP_EXPIRY = 300
 pending_otps: dict[str, dict[str, Any]] = {}

@@ -44,7 +44,7 @@ from src.py.workspace import (
     lock_view,
     send_file_version,
 )
-
+from semantic_search.manage_index import add_file
 
 router = APIRouter(prefix="/api/workspace", tags=["editing"])
 
@@ -425,6 +425,11 @@ def save_to_synapse(
                 ) from exc
         else:
             updated = row
+        if changed:
+            try:
+                add_file(row["id"], tmp_path)
+            except Exception as exc:
+                print(f"Semantic re-indexing failed for file {row['id']}: {exc}")
 
         store.update_edit_session(
             session_id,

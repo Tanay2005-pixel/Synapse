@@ -9,6 +9,7 @@ from pathlib import Path
 from threading import Lock
 from typing import Literal
 from urllib.parse import quote
+from semantic_search.manage_index import add_file
 
 from fastapi import (
     APIRouter, Depends, File, HTTPException, Query, Request, Response, UploadFile,
@@ -527,6 +528,10 @@ def upload_file(
         row = _save_item(
             user_id, name, size, file.content_type or None, "file_uploaded", chunks
         )
+        try:
+            add_file(row["id"], tmp_path)
+        except Exception as exc:
+            print(f"Semantic indexing failed for file {row['id']}: {exc}")
         return _item_response(row, chunks=len(chunks))
     finally:
         file.file.close()

@@ -22,6 +22,7 @@ target_link_libraries(synapse_engine PRIVATE OpenSSL::Crypto stdc++fs)
 add_executable(synapse_lock
     src/lock_main.cpp
     src/lock_manager.cpp
+    src/file_lock.cpp
 )
 
 target_include_directories(synapse_lock PRIVATE include)

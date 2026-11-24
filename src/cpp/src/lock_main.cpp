@@ -10,11 +10,23 @@
 //   2  held by another user or session        (HTTP 409)
 //   3  caller does not own the lock            (HTTP 403)
 //   4  no lock exists (or it was reclaimed)    (HTTP 409/410 at the API)
+//   5  hold: lock is busy, timed out waiting  (HTTP 503 at the API)
+//
+// `hold` is different from the other commands: it keeps running. It takes a
+// shared or exclusive flock on <locks_dir>/<key>.io, prints one JSON line
+// ("locked"), and then waits until its stdin is closed. The Python request
+// keeps that pipe open for the whole upload/download and closes it when it
+// is done; if the Python process dies, the OS closes the pipe for it. When
+// this process exits (normally, killed, or crashed) the kernel releases the
+// flock, so the lock can never outlive the request that took it.
 
+#include "file_lock.hpp"
 #include "lock_manager.hpp"
 
+#include <cerrno>
 #include <cstdint>
 #include <iostream>
+#include <unistd.h>
 #include <optional>
 #include <sstream>
 #include <stdexcept>
@@ -33,10 +45,12 @@ constexpr int EXIT_ERROR = 1;
 constexpr int EXIT_HELD = 2;
 constexpr int EXIT_NOT_OWNER = 3;
 constexpr int EXIT_NOT_LOCKED = 4;
+constexpr int EXIT_BUSY = 5;
 
 void usage(const char* bin) {
     std::cerr
         << "Usage:\n"
+        << "  " << bin << " hold      <locks_dir> <key> <shared|exclusive> <timeout_ms>\n"
         << "  " << bin << " acquire   <locks_dir> <file_id> <user_id> <session_id> <lease_s> <abandon_s>\n"
         << "  " << bin << " heartbeat <locks_dir> <file_id> <user_id> <session_id> <lease_s>\n"
         << "  " << bin << " release   <locks_dir> <file_id> <user_id> <session_id>\n"
@@ -110,6 +124,40 @@ int print_outcome(const LockOutcome& o) {
     return EXIT_ERROR;
 }
 
+int hold(const std::string& locks_dir, const std::string& key,
+         const std::string& mode_text, std::int64_t timeout_ms) {
+    if (!synapse::valid_lock_key(key))
+        throw std::invalid_argument("invalid lock key");
+    if (mode_text != "shared" && mode_text != "exclusive")
+        throw std::invalid_argument("mode must be shared or exclusive");
+    if (timeout_ms > 24LL * 3600 * 1000)
+        throw std::invalid_argument("timeout too large");
+    const auto mode = mode_text == "shared" ? synapse::FileLock::Mode::Shared
+                                            : synapse::FileLock::Mode::Exclusive;
+
+    std::filesystem::create_directories(locks_dir);
+    const std::filesystem::path path = std::filesystem::path(locks_dir) / (key + ".io");
+
+    try {
+        synapse::FileLock lock(path, mode, static_cast<int>(timeout_ms));
+        std::cout << "{\"status\": \"locked\", \"key\": \"" << key
+                  << "\", \"mode\": \"" << mode_text << "\", \"pid\": " << ::getpid()
+                  << "}" << std::endl;  // endl flushes: the caller is waiting for this line
+
+        // Hold until the caller closes our stdin (EOF) or the pipe breaks.
+        char buf[256];
+        for (;;) {
+            ssize_t n = ::read(STDIN_FILENO, buf, sizeof buf);
+            if (n == 0) break;                         // EOF: caller is done
+            if (n < 0 && errno != EINTR) break;        // pipe error: caller is gone
+        }
+    } catch (const synapse::LockTimeout& e) {
+        std::cout << "{\"status\": \"busy\", \"key\": \"" << key << "\"}" << std::endl;
+        return EXIT_BUSY;
+    }
+    return EXIT_OK;  // FileLock destructor released the flock
+}
+
 }  // namespace
 
 int main(int argc, char* argv[]) {
@@ -120,6 +168,9 @@ int main(int argc, char* argv[]) {
 
     const std::string command = argv[1];
     try {
+        if (command == "hold" && argc == 6)
+            return hold(argv[2], argv[3], argv[4], parse_int(argv[5], "timeout_ms"));
+
         LockManager manager(argv[2]);
 
         if (command == "list" && argc == 3) {
